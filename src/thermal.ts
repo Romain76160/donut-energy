@@ -1,4 +1,5 @@
 import { normalizeProfile, wallLength, type SurfaceAssembly, type Wall, type WallLayer } from "./model";
+import { wallInclinationSurfaceFactor } from "./wallInclination";
 
 const INTERNAL_SURFACE_RESISTANCE = 0.13;
 const EXTERNAL_SURFACE_RESISTANCE = 0.04;
@@ -8,7 +9,7 @@ export const layerResistance = (layer: WallLayer) =>
   layer.conductivity > 0 ? layer.thicknessMm / 1000 / layer.conductivity : 0;
 
 export const layersResistance = (layers: WallLayer[]) =>
-  layers.reduce((total, layer) => total + layerResistance(layer), 0);
+  layers.reduce((total, layer) => total + layerResistance(layer), 0;
 
 export const wallResistance = (wall: Wall) =>
   INTERNAL_SURFACE_RESISTANCE +
@@ -20,7 +21,7 @@ export const wallUValue = (wall: Wall) => {
   return resistance > 0 ? 1 / resistance : 0;
 };
 
-export const wallArea = (wall: Wall) => {
+export const wallProjectedArea = (wall: Wall) => {
   const profile = normalizeProfile(wall);
   let area = 0;
   for (let index = 0; index < profile.length - 1; index += 1) {
@@ -30,6 +31,8 @@ export const wallArea = (wall: Wall) => {
   }
   return area;
 };
+
+export const wallArea = (wall: Wall) => wallProjectedArea(wall) * wallInclinationSurfaceFactor(wall);
 
 export const assemblyResistance = (assembly: SurfaceAssembly) =>
   HORIZONTAL_INTERNAL_RESISTANCE + EXTERNAL_SURFACE_RESISTANCE + layersResistance(assembly.layers);

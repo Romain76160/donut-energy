@@ -12,13 +12,16 @@ import {
   type WallType,
 } from "../model";
 import { wallArea, wallResistance, wallUValue } from "../thermal";
+import { WallSectionView } from "./WallSectionView";
+
+type WallPatch = Partial<Wall> & { inclinationDeg?: number };
 
 type Props = {
   wall: Wall | null;
   language: Language;
   automaticOrientation: Orientation | null;
   automaticAzimuth: number | null;
-  onUpdateWall: (patch: Partial<Wall>) => void;
+  onUpdateWall: (patch: WallPatch) => void;
   onUpdateLength: (length: number) => void;
   onAddLayer: () => void;
   onUpdateLayer: (layerId: string, patch: Partial<WallLayer>) => void;
@@ -179,6 +182,8 @@ export function WallInspector({
         </div>
         <button className="add-layer-button" onClick={onAddProfilePoint}><PlusIcon /> {text.addProfilePoint}</button>
       </div>
+
+      <WallSectionView wall={wall} language={language} onInclinationChange={(inclinationDeg) => onUpdateWall({ inclinationDeg })} />
 
       <div className="inspector-section">
         <h3>{text.composition}</h3>
