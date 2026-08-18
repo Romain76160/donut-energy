@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "../icons";
+import { localeFor, translations, type Language } from "../i18n";
 import type { EditorMode, Point, Wall } from "../model";
 import { formatNumber, wallLength } from "../model";
 
@@ -14,6 +15,7 @@ type Props = {
   mode: EditorMode;
   zoom: number;
   draftStart: Point | null;
+  language: Language;
   onSelectWall: (id: string) => void;
   onCanvasPoint: (point: Point) => void;
   onZoomChange: (zoom: number) => void;
@@ -27,6 +29,7 @@ export function PlanCanvas({
   mode,
   zoom,
   draftStart,
+  language,
   onSelectWall,
   onCanvasPoint,
   onZoomChange,
@@ -34,6 +37,8 @@ export function PlanCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
   const scale = BASE_SCALE * zoom;
+  const text = translations[language];
+  const locale = localeFor(language);
 
   const project = (point: Point) => ({
     x: CENTER.x + point.x * scale,
@@ -60,10 +65,10 @@ export function PlanCanvas({
     <main className={`canvas-panel ${mode === "draw" ? "drawing" : ""}`}>
       <div className="canvas-heading">
         <div>
-          <h1>Plan du bâtiment</h1>
-          {mode === "draw" ? <p>Cliquez sur le départ puis l’arrivée du mur</p> : null}
+          <h1>{text.planTitle}</h1>
+          {mode === "draw" ? <p>{text.drawHint}</p> : null}
         </div>
-        <div className="north-indicator" aria-label="Nord">
+        <div className="north-indicator" aria-label={text.north}>
           <span>N</span>
           <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 23 25 16 21 9 25Z" /></svg>
         </div>
@@ -73,7 +78,7 @@ export function PlanCanvas({
         className="plan-canvas"
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
         role="img"
-        aria-label="Plan des murs du bâtiment"
+        aria-label={text.planAria}
         onPointerMove={(event) => mode === "draw" && setPointer(eventToWorld(event.clientX, event.clientY))}
         onPointerLeave={() => setPointer(null)}
         onClick={(event) => mode === "draw" && onCanvasPoint(eventToWorld(event.clientX, event.clientY))}
@@ -106,7 +111,7 @@ export function PlanCanvas({
               <circle cx={start.x} cy={start.y} r="9" />
               <circle cx={end.x} cy={end.y} r="9" />
               <text x={midX + (horizontal ? 0 : 27)} y={midY + (horizontal ? -24 : 5)} textAnchor="middle">
-                {formatNumber(wallLength(wall))} m
+                {formatNumber(wallLength(wall), 2, locale)} m
               </text>
             </g>
           );
@@ -117,7 +122,7 @@ export function PlanCanvas({
             <circle cx={preview.start.x} cy={preview.start.y} r="8" />
             <circle cx={preview.end.x} cy={preview.end.y} r="8" />
             <text x={(preview.start.x + preview.end.x) / 2} y={(preview.start.y + preview.end.y) / 2 - 18} textAnchor="middle">
-              {formatNumber(preview.length)} m
+              {formatNumber(preview.length, 2, locale)} m
             </text>
           </g>
         ) : null}
@@ -130,10 +135,10 @@ export function PlanCanvas({
         <div><span>0</span><span>1</span><span>2</span><span>3 m</span></div>
         <i style={{ width: `${3 * scale}px`, maxWidth: "150px" }} />
       </div>
-      <div className="zoom-controls" aria-label="Contrôles du zoom">
-        <button onClick={() => onZoomChange(Math.min(1.5, zoom + 0.1))} aria-label="Agrandir"><ZoomInIcon /></button>
-        <button onClick={() => onZoomChange(Math.max(0.6, zoom - 0.1))} aria-label="Réduire"><ZoomOutIcon /></button>
-        <button onClick={() => onZoomChange(1)} aria-label="Réinitialiser le zoom"><LocateIcon /></button>
+      <div className="zoom-controls" aria-label={text.zoomControls}>
+        <button onClick={() => onZoomChange(Math.min(1.5, zoom + 0.1))} aria-label={text.zoomIn}><ZoomInIcon /></button>
+        <button onClick={() => onZoomChange(Math.max(0.6, zoom - 0.1))} aria-label={text.zoomOut}><ZoomOutIcon /></button>
+        <button onClick={() => onZoomChange(1)} aria-label={text.zoomReset}><LocateIcon /></button>
       </div>
     </main>
   );
