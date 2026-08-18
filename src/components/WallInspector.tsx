@@ -12,6 +12,12 @@ import {
   type WallType,
 } from "../model";
 import { wallArea, wallResistance, wallUValue } from "../thermal";
+import {
+  wallProfileFromPreset,
+  wallProfilePresetPoints,
+  type WallProfilePreset,
+} from "../wallProfilePresets";
+import "../wall-profile-presets.css";
 import { WallSectionView } from "./WallSectionView";
 
 type WallPatch = Partial<Wall> & { inclinationDeg?: number };
@@ -31,6 +37,34 @@ type Props = {
   onAddProfilePoint: () => void;
   onRemoveProfilePoint: (id: string) => void;
 };
+
+const PRESETS: Array<{ id: WallProfilePreset; fr: string; en: string }> = [
+  { id: "rectangle", fr: "Mur droit", en: "Straight wall" },
+  { id: "slope-up", fr: "Monopente montante", en: "Rising mono-pitch" },
+  { id: "slope-down", fr: "Monopente descendante", en: "Falling mono-pitch" },
+  { id: "gable-center", fr: "Pignon centré", en: "Centered gable" },
+  { id: "gable-left", fr: "Pignon décalé gauche", en: "Left-offset gable" },
+  { id: "gable-right", fr: "Pignon décalé droit", en: "Right-offset gable" },
+  { id: "step-up", fr: "Décroché montant", en: "Step up" },
+  { id: "step-down", fr: "Décroché descendant", en: "Step down" },
+];
+
+function PresetIcon({ preset }: { preset: WallProfilePreset }) {
+  const points = wallProfilePresetPoints(preset).map(([x, y]) => ({
+    x: 8 + x * 84,
+    y: 4 + y * 34,
+  }));
+  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const polygon = [`8,38`, ...points.map((point) => `${point.x},${point.y}`), `92,38`].join(" ");
+
+  return (
+    <svg viewBox="0 0 100 42" aria-hidden="true">
+      <line className="preset-ground" x1="6" y1="38" x2="94" y2="38" />
+      <polygon className="preset-fill" points={polygon} />
+      <polyline className="preset-line" points={line} />
+    </svg>
+  );
+}
 
 function ProfilePreview({ wall }: { wall: Wall }) {
   const profile = normalizeProfile(wall);
@@ -96,6 +130,22 @@ export function WallInspector({
     onUpdateProfile(next);
   };
 
+  const applyPreset = (preset: WallProfilePreset) => {
+    if (preset === "rectangle") {
+      onSetProfilePreset("rectangle");
+      return;
+    }
+    if (preset === "slope-up") {
+      onSetProfilePreset("slope");
+      return;
+    }
+    if (preset === "gable-center") {
+      onSetProfilePreset("gable");
+      return;
+    }
+    onUpdateProfile(wallProfileFromPreset(preset, length, wall.height));
+  };
+
   return (
     <aside className="inspector" aria-label={text.wallPropertiesAria}>
       <h2>{text.wallProperties}</h2>
@@ -150,11 +200,31 @@ export function WallInspector({
       <div className="inspector-section profile-section">
         <div className="section-title-row"><h3>{text.profile}</h3><span>{formatNumber(wallArea(wall), 2, locale)} m²</span></div>
         <p className="section-help">{text.profileHelp}</p>
-        <div className="profile-presets">
-          <button onClick={() => onSetProfilePreset("rectangle")}>{text.rectangle}</button>
-          <button onClick={() => onSetProfilePreset("slope")}>{text.slope}</button>
-          <button onClick={() => onSetProfilePreset("gable")}>{text.gable}</button>
+
+        <div className="wall-profile-library">
+          <div className="wall-profile-library-title">
+            <strong>{language === "fr" ? "FORMES PRÉDÉFINIES" : "PRESET SHAPES"}</strong>
+            <span>{language === "fr" ? "1 clic" : "1 click"}</span>
+          </div>
+          <div className="wall-profile-grid">
+            {PRESETS.map((preset) => {
+              const label = language === "fr" ? preset.fr : preset.en;
+              return (
+                <button
+                  type="button"
+                  className="wall-profile-preset"
+                  key={preset.id}
+                  onClick={() => applyPreset(preset.id)}
+                  aria-label={`${language === "fr" ? "Appliquer" : "Apply"} ${label}`}
+                >
+                  <PresetIcon preset={preset.id} />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
         <ProfilePreview wall={wall} />
         <div className="profile-point-list">
           <div className="profile-point-header"><span>{text.position}</span><span>{text.height}</span><span /></div>
