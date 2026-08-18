@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: github-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -42,6 +42,9 @@ jobs:
           echo ""
           echo "===== dist/index.html ====="
           cat dist/index.html
+          echo ""
+          echo "===== Checking for compiled assets ====="
+          ls -lah dist/assets/ 2>/dev/null || echo "No assets folder found"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
