@@ -35,6 +35,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Debug - List dist contents
+        run: |
+          echo "===== dist directory structure ====="
+          find dist -maxdepth 3 -type f -print
+          echo ""
+          echo "===== dist/index.html ====="
+          cat dist/index.html
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
