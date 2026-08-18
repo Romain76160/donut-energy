@@ -13,11 +13,11 @@ import {
 } from "../model";
 import { wallArea, wallResistance, wallUValue } from "../thermal";
 
-const ORIENTATIONS: Orientation[] = ["Nord", "Est", "Sud", "Ouest"];
-
 type Props = {
   wall: Wall | null;
   language: Language;
+  automaticOrientation: Orientation | null;
+  automaticAzimuth: number | null;
   onUpdateWall: (patch: Partial<Wall>) => void;
   onUpdateLength: (length: number) => void;
   onAddLayer: () => void;
@@ -62,6 +62,8 @@ function ProfilePreview({ wall }: { wall: Wall }) {
 export function WallInspector({
   wall,
   language,
+  automaticOrientation,
+  automaticAzimuth,
   onUpdateWall,
   onUpdateLength,
   onAddLayer,
@@ -74,6 +76,7 @@ export function WallInspector({
 }: Props) {
   const text = translations[language];
   const locale = localeFor(language);
+  const automaticLabel = language === "fr" ? "Calculée depuis le nord du projet" : "Calculated from project north";
 
   if (!wall) return null;
   const profile = normalizeProfile(wall);
@@ -132,9 +135,12 @@ export function WallInspector({
         </label>
         <label>
           <span>{text.orientation}</span>
-          <select value={wall.orientation} onChange={(event) => onUpdateWall({ orientation: event.target.value as Orientation })}>
-            {ORIENTATIONS.map((orientation) => <option key={orientation} value={orientation}>{orientationLabel(orientation, language)}</option>)}
-          </select>
+          <div className="orientation-readonly">
+            <strong>{wall.type === "internal" ? text.internal : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong>
+            <small>
+              {wall.type === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{automaticLabel}
+            </small>
+          </div>
         </label>
       </div>
 

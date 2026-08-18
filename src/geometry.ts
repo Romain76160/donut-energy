@@ -1,4 +1,4 @@
-import { createId, orientationFromPoints, pointsEqual, rectangleProfile, wallLength, type Point, type Wall } from "./model";
+import { createId, orientationFromPoints, pointsEqual, rectangleProfile, wallLength, type Orientation, type Point, type Wall } from "./model";
 
 export type Room = {
   id: string;
@@ -11,6 +11,57 @@ export type Room = {
 
 const ROUNDING = 1000;
 const pointKey = (point: Point) => `${Math.round(point.x * ROUNDING)},${Math.round(point.y * ROUNDING)}`;
+const normalizeAngle = (value: number) => ((value % 360) + 360) % 360;
+
+const orientationFromAzimuth = (azimuth: number): Orientation => {
+  const normalized = normalizeAngle(azimuth);
+  if (normalized >= 315 || normalized < 45) return "Nord";
+  if (normalized < 135) return "Est";
+  if (normalized < 225) return "Sud";
+  return "Ouest";
+};
+
+const roomUsesWall = (room: Room, wall: Wall) => room.polygon.some((point, index) => {
+  const next = room.polygon[(index + 1) % room.polygon.length];
+  return (
+    (pointsEqual(point, wall.start, 0.02) && pointsEqual(next, wall.end, 0.02)) ||
+    (pointsEqual(point, wall.end, 0.02) && pointsEqual(next, wall.start, 0.02))
+  );
+});
+
+const envelopeCenter = (walls: Wall[]): Point => {
+  const envelope = walls.filter((wall) => wall.type === "external");
+  const source = envelope.length ? envelope : walls;
+  const points = source.flatMap((wall) => [wall.start, wall.end]);
+  if (!points.length) return { x: 0, y: 0 };
+  return points.reduce(
+    (center, point) => ({ x: center.x + point.x / points.length, y: center.y + point.y / points.length }),
+    { x: 0, y: 0 },
+  );
+};
+
+export const wallAzimuthFromNorth = (wall: Wall, walls: Wall[], northAngleDeg: number, rooms?: Room[]) => {
+  const dx = wall.end.x - wall.start.x;
+  const dy = wall.end.y - wall.start.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 0.001) return 0;
+
+  const midpoint = { x: (wall.start.x + wall.end.x) / 2, y: (wall.start.y + wall.end.y) / 2 };
+  const detectedRooms = rooms ?? detectRooms(walls);
+  const adjacentRoom = detectedRooms.find((room) => roomUsesWall(room, wall));
+  const reference = adjacentRoom?.centroid ?? envelopeCenter(walls);
+  const away = { x: midpoint.x - reference.x, y: midpoint.y - reference.y };
+
+  const leftNormal = { x: dy / length, y: -dx / length };
+  const leftScore = leftNormal.x * away.x + leftNormal.y * away.y;
+  const normal = leftScore >= 0 ? leftNormal : { x: -leftNormal.x, y: -leftNormal.y };
+
+  const absoluteBearing = normalizeAngle(Math.atan2(normal.x, -normal.y) * 180 / Math.PI);
+  return normalizeAngle(absoluteBearing - northAngleDeg);
+};
+
+export const wallOrientationFromNorth = (wall: Wall, walls: Wall[], northAngleDeg: number, rooms?: Room[]): Orientation =>
+  orientationFromAzimuth(wallAzimuthFromNorth(wall, walls, northAngleDeg, rooms));
 
 export const snapToGrid = (point: Point, step = 0.5): Point => ({
   x: Math.round(point.x / step) * step,

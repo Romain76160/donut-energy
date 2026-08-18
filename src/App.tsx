@@ -5,7 +5,7 @@ import { PlanCanvas } from "./components/PlanCanvas";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
 import { WallInspector } from "./components/WallInspector";
-import { detectRooms, nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint } from "./geometry";
+import { detectRooms, nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
 import { translations, type Language } from "./i18n";
 import {
   createId,
@@ -53,6 +53,15 @@ const loadLanguage = (): Language => {
   }
 };
 
+const loadNorthAngle = () => {
+  try {
+    const value = Number(localStorage.getItem("donut-energy-north-angle"));
+    return Number.isFinite(value) ? ((value % 360) + 360) % 360 : 0;
+  } catch {
+    return 0;
+  }
+};
+
 const drawingMode = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal";
 
 function App() {
@@ -66,6 +75,7 @@ function App() {
   const [zoom, setZoom] = useState(1);
   const [saved, setSaved] = useState(false);
   const [language, setLanguage] = useState<Language>(loadLanguage);
+  const [northAngle, setNorthAngle] = useState(loadNorthAngle);
 
   const project = history.present;
   const activeLevel = useMemo(
@@ -84,6 +94,14 @@ function App() {
       .sort((a, b) => b.elevation - a.elevation)[0];
     return lower?.walls ?? [];
   }, [activeLevel, project.levels]);
+  const automaticOrientation = useMemo(() => {
+    if (!selectedWall || selectedWall.type !== "external" || !activeLevel) return null;
+    return wallOrientationFromNorth(selectedWall, activeLevel.walls, northAngle, rooms);
+  }, [selectedWall, activeLevel, northAngle, rooms]);
+  const automaticAzimuth = useMemo(() => {
+    if (!selectedWall || selectedWall.type !== "external" || !activeLevel) return null;
+    return wallAzimuthFromNorth(selectedWall, activeLevel.walls, northAngle, rooms);
+  }, [selectedWall, activeLevel, northAngle, rooms]);
 
   useEffect(() => {
     if (!activeLevel) {
@@ -109,6 +127,14 @@ function App() {
       // Language persistence is optional when storage is unavailable.
     }
   }, [language]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("donut-energy-north-angle", String(northAngle));
+    } catch {
+      // North orientation persistence is optional when storage is unavailable.
+    }
+  }, [northAngle]);
 
   const commit = (update: (current: Project) => Project) => {
     setSaved(false);
@@ -390,16 +416,20 @@ function App() {
           mode={mode}
           zoom={zoom}
           draftStart={draftStart}
+          northAngle={northAngle}
           language={language}
           onSelectWall={setSelectedWallId}
           onClearSelection={() => setSelectedWallId(null)}
           onCanvasPoint={handleCanvasPoint}
           onZoomChange={setZoom}
+          onNorthAngleChange={setNorthAngle}
         />
         {selectedWall ? (
           <WallInspector
             wall={selectedWall}
             language={language}
+            automaticOrientation={automaticOrientation}
+            automaticAzimuth={automaticAzimuth}
             onUpdateWall={(patch) => updateSelectedWall((wall) => ({ ...wall, ...patch }))}
             onUpdateLength={updateWallLength}
             onAddLayer={() => updateSelectedWall((wall) => ({ ...wall, layers: [...wall.layers, { id: createId(), thicknessMm: 100, ...MATERIALS[5] }] }))}

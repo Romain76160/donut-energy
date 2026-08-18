@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "../icons";
-import { snapPoint, type Room } from "../geometry";
-import { localeFor, translations, type Language } from "../i18n";
+import { snapPoint, wallOrientationFromNorth, type Room } from "../geometry";
+import { localeFor, orientationLabel, translations, type Language } from "../i18n";
 import { formatNumber, wallLength, type EditorMode, type Point, type Wall } from "../model";
+import "../north-control.css";
 
 const VIEW_WIDTH = 900;
 const VIEW_HEIGHT = 680;
@@ -17,14 +18,17 @@ type Props = {
   mode: EditorMode;
   zoom: number;
   draftStart: Point | null;
+  northAngle: number;
   language: Language;
   onSelectWall: (id: string) => void;
   onClearSelection: () => void;
   onCanvasPoint: (point: Point) => void;
   onZoomChange: (zoom: number) => void;
+  onNorthAngleChange: (angle: number) => void;
 };
 
 const isDrawing = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal";
+const normalizeNorthAngle = (value: number) => ((value % 360) + 360) % 360;
 
 export function PlanCanvas({
   walls,
@@ -34,17 +38,22 @@ export function PlanCanvas({
   mode,
   zoom,
   draftStart,
+  northAngle,
   language,
   onSelectWall,
   onClearSelection,
   onCanvasPoint,
   onZoomChange,
+  onNorthAngleChange,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const northDialRef = useRef<HTMLDivElement>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
   const scale = BASE_SCALE * zoom;
   const text = translations[language];
   const locale = localeFor(language);
+  const northControlLabel = language === "fr" ? "Orientation du nord" : "North orientation";
+  const northHint = language === "fr" ? "Glisser pour orienter le nord" : "Drag to orient north";
 
   const project = (point: Point) => ({
     x: CENTER.x + point.x * scale,
@@ -58,6 +67,16 @@ export function PlanCanvas({
     const x = ((clientX - rect.left) / rect.width) * VIEW_WIDTH;
     const y = ((clientY - rect.top) / rect.height) * VIEW_HEIGHT;
     return snapPoint({ x: (x - CENTER.x) / scale, y: (y - CENTER.y) / scale }, walls);
+  };
+
+  const setNorthFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const dial = northDialRef.current;
+    if (!dial) return;
+    const rect = dial.getBoundingClientRect();
+    const dx = event.clientX - (rect.left + rect.width / 2);
+    const dy = event.clientY - (rect.top + rect.height / 2);
+    const angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+    onNorthAngleChange(normalizeNorthAngle(Math.round(angle)));
   };
 
   const preview = useMemo(() => {
@@ -80,9 +99,59 @@ export function PlanCanvas({
           {isDrawing(mode) ? <p>{text.drawHint}</p> : null}
           {mode === "node" ? <p>{text.nodeHint}</p> : null}
         </div>
-        <div className="north-indicator" aria-label={text.north}>
-          <span>N</span>
-          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 23 25 16 21 9 25Z" /></svg>
+        <div className="north-control">
+          <div
+            ref={northDialRef}
+            className="north-dial"
+            role="slider"
+            tabIndex={0}
+            aria-label={northControlLabel}
+            aria-valuemin={0}
+            aria-valuemax={359}
+            aria-valuenow={Math.round(northAngle)}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setNorthFromPointer(event);
+            }}
+            onPointerMove={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) setNorthFromPointer(event);
+            }}
+            onPointerUp={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+            }}
+            onPointerCancel={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+            }}
+            onKeyDown={(event) => {
+              const step = event.shiftKey ? 15 : 1;
+              if (["ArrowRight", "ArrowUp"].includes(event.key)) {
+                event.preventDefault();
+                onNorthAngleChange(normalizeNorthAngle(northAngle + step));
+              }
+              if (["ArrowLeft", "ArrowDown"].includes(event.key)) {
+                event.preventDefault();
+                onNorthAngleChange(normalizeNorthAngle(northAngle - step));
+              }
+            }}
+          >
+            <div className="north-arrow" style={{ transform: `rotate(${northAngle}deg)` }} aria-hidden="true">
+              <span>N</span>
+              <svg viewBox="0 0 32 32"><path d="M16 3 23 25 16 21 9 25Z" /></svg>
+            </div>
+          </div>
+          <div className="north-angle-field">
+            <input
+              aria-label={northControlLabel}
+              type="number"
+              min="0"
+              max="359"
+              step="1"
+              value={Math.round(northAngle)}
+              onChange={(event) => onNorthAngleChange(normalizeNorthAngle(Number(event.target.value)))}
+            />
+            <b>°</b>
+          </div>
+          <small>{northHint}</small>
         </div>
       </div>
       <svg
@@ -138,6 +207,9 @@ export function PlanCanvas({
           const midX = (start.x + end.x) / 2;
           const midY = (start.y + end.y) / 2;
           const horizontal = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y);
+          const automaticOrientation = wall.type === "external"
+            ? wallOrientationFromNorth(wall, walls, northAngle, rooms)
+            : null;
           return (
             <g
               key={wall.id}
@@ -153,7 +225,7 @@ export function PlanCanvas({
               <circle className="wall-node" cx={start.x} cy={start.y} r="7" />
               <circle className="wall-node" cx={end.x} cy={end.y} r="7" />
               <text x={midX + (horizontal ? 0 : 25)} y={midY + (horizontal ? -20 : 4)} textAnchor="middle">
-                {formatNumber(wallLength(wall), 2, locale)} m
+                {formatNumber(wallLength(wall), 2, locale)} m{automaticOrientation ? ` · ${orientationLabel(automaticOrientation, language)}` : ""}
               </text>
             </g>
           );
