@@ -6,12 +6,17 @@ import "./styles.css";
 type ErrorBoundaryProps = { children: ReactNode };
 type ErrorBoundaryState = { error: string | null };
 
+const escapeHtml = (value: string) => value
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;");
+
 const diagnosticMarkup = (message: string) => `
   <div style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0c1729;background:#fff">
     <div style="width:min(680px,100%);padding:24px;border:1px solid #e4e7ec;border-radius:12px;box-shadow:0 8px 30px rgba(16,24,40,.08)">
       <h1 style="margin:0 0 12px;font-size:22px">Donut Energy — erreur de chargement</h1>
       <p style="margin:0 0 14px;line-height:1.55;color:#475467">L’application a bien été chargée par GitHub Pages, mais une erreur JavaScript empêche son affichage.</p>
-      <pre style="margin:0;padding:14px;overflow:auto;border-radius:8px;background:#f8fafc;color:#b42318;white-space:pre-wrap;font-size:12px">${message.replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[char] ?? char)}</pre>
+      <pre style="margin:0;padding:14px;overflow:auto;border-radius:8px;background:#f8fafc;color:#b42318;white-space:pre-wrap;font-size:12px">${escapeHtml(message)}</pre>
     </div>
   </div>`;
 
