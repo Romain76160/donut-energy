@@ -2,6 +2,7 @@ import { localeFor, materialLabel, type Language } from "../i18n";
 import { formatNumber, type Wall } from "../model";
 import {
   clampWallInclination,
+  persistWallInclination,
   wallInclinationDeg,
   wallTopOffset,
   wallTotalThickness,
@@ -22,6 +23,12 @@ export function WallSectionView({ wall, language, onInclinationChange }: Props) 
   const topOffset = wallTopOffset(wall.height, inclination);
   const thickness = wallTotalThickness(wall);
   const angle = inclination * Math.PI / 180;
+
+  const changeInclination = (value: number) => {
+    const next = clampWallInclination(value);
+    persistWallInclination(wall.id, next);
+    onInclinationChange(next);
+  };
 
   const width = 312;
   const height = 196;
@@ -96,7 +103,7 @@ export function WallSectionView({ wall, language, onInclinationChange }: Props) 
               max="150"
               step="1"
               value={inclination}
-              onChange={(event) => onInclinationChange(clampWallInclination(Number(event.target.value)))}
+              onChange={(event) => changeInclination(Number(event.target.value))}
             />
             <div className="unit-input compact inclination-number">
               <input
@@ -105,16 +112,16 @@ export function WallSectionView({ wall, language, onInclinationChange }: Props) 
                 max="150"
                 step="1"
                 value={Math.round(inclination)}
-                onChange={(event) => onInclinationChange(clampWallInclination(Number(event.target.value)))}
+                onChange={(event) => changeInclination(Number(event.target.value))}
               />
               <b>°</b>
             </div>
           </div>
         </label>
         <div className="inclination-presets">
-          <button onClick={() => onInclinationChange(75)}>75°</button>
-          <button className={Math.abs(inclination - 90) < 0.5 ? "active" : ""} onClick={() => onInclinationChange(90)}>90° · {labels.vertical}</button>
-          <button onClick={() => onInclinationChange(105)}>105°</button>
+          <button onClick={() => changeInclination(75)}>75°</button>
+          <button className={Math.abs(inclination - 90) < 0.5 ? "active" : ""} onClick={() => changeInclination(90)}>90° · {labels.vertical}</button>
+          <button onClick={() => changeInclination(105)}>105°</button>
         </div>
       </div>
 
