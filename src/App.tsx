@@ -4,6 +4,7 @@ import { PlanCanvas } from "./components/PlanCanvas";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
 import { WallInspector } from "./components/WallInspector";
+import { translations, type Language } from "./i18n";
 import {
   initialProject,
   MATERIALS,
@@ -32,6 +33,14 @@ const loadProject = () => {
   return initialProject();
 };
 
+const loadLanguage = (): Language => {
+  try {
+    return localStorage.getItem("donut-energy-language") === "en" ? "en" : "fr";
+  } catch {
+    return "fr";
+  }
+};
+
 function App() {
   const [history, setHistory] = useState<History>(() => ({ past: [], present: loadProject(), future: [] }));
   const [selectedWallId, setSelectedWallId] = useState<string | null>(() => history.present.walls[0]?.id ?? null);
@@ -39,6 +48,7 @@ function App() {
   const [draftStart, setDraftStart] = useState<Point | null>(null);
   const [zoom, setZoom] = useState(1);
   const [saved, setSaved] = useState(false);
+  const [language, setLanguage] = useState<Language>(loadLanguage);
 
   const project = history.present;
   const selectedWall = useMemo(
@@ -51,6 +61,26 @@ function App() {
       setSelectedWallId(project.walls[0]?.id ?? null);
     }
   }, [project.walls, selectedWallId]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = language === "fr"
+      ? "Donut Energy — Modélisation des murs"
+      : "Donut Energy — Wall modelling";
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute(
+        "content",
+        language === "fr"
+          ? "Donut Energy — éditeur de murs pour la simulation thermique dynamique."
+          : "Donut Energy — wall editor for dynamic thermal simulation.",
+      );
+    try {
+      localStorage.setItem("donut-energy-language", language);
+    } catch {
+      // Language persistence is optional when storage is unavailable.
+    }
+  }, [language]);
 
   const commit = (update: (current: Project) => Project) => {
     setSaved(false);
@@ -103,7 +133,7 @@ function App() {
     const id = crypto.randomUUID();
     const newWall: Wall = {
       id,
-      name: `Mur ${project.walls.length + 1}`,
+      name: translations[language].newWall(project.walls.length + 1),
       start: draftStart,
       end: point,
       height: 2.8,
@@ -155,16 +185,19 @@ function App() {
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
         saved={saved}
+        language={language}
         onTitleChange={(title) => commit((current) => ({ ...current, title }))}
         onUndo={undo}
         onRedo={redo}
         onSave={save}
+        onLanguageChange={() => setLanguage((current) => current === "fr" ? "en" : "fr")}
       />
       <div className="workspace">
         <ModelSidebar
           mode={mode}
           walls={project.walls}
           selectedWallId={selectedWallId}
+          language={language}
           onModeChange={handleModeChange}
           onSelectWall={(id) => { setSelectedWallId(id); setMode("select"); setDraftStart(null); }}
         />
@@ -174,12 +207,14 @@ function App() {
           mode={mode}
           zoom={zoom}
           draftStart={draftStart}
+          language={language}
           onSelectWall={setSelectedWallId}
           onCanvasPoint={handleCanvasPoint}
           onZoomChange={setZoom}
         />
         <WallInspector
           wall={selectedWall}
+          language={language}
           onUpdateWall={(patch) => updateSelectedWall((wall) => ({ ...wall, ...patch }))}
           onUpdateLength={updateWallLength}
           onAddLayer={() => updateSelectedWall((wall) => ({
@@ -193,7 +228,7 @@ function App() {
           }))}
         />
       </div>
-      <StatusBar walls={project.walls} />
+      <StatusBar walls={project.walls} language={language} />
     </div>
   );
 }
