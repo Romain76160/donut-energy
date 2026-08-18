@@ -38,7 +38,15 @@ type Props = {
   onRemoveProfilePoint: (id: string) => void;
 };
 
-const PRESETS: Array<{ id: WallProfilePreset; fr: string; en: string }> = [
+type PresetDefinition = {
+  id: WallProfilePreset;
+  fr: string;
+  en: string;
+  descriptionFr?: string;
+  descriptionEn?: string;
+};
+
+const CORE_PRESETS: PresetDefinition[] = [
   { id: "rectangle", fr: "Mur droit", en: "Straight wall" },
   { id: "slope-up", fr: "Monopente montante", en: "Rising mono-pitch" },
   { id: "slope-down", fr: "Monopente descendante", en: "Falling mono-pitch" },
@@ -49,14 +57,21 @@ const PRESETS: Array<{ id: WallProfilePreset; fr: string; en: string }> = [
   { id: "step-down", fr: "Décroché descendant", en: "Step down" },
 ];
 
-function PresetIcon({ preset }: { preset: WallProfilePreset }) {
-  const points = wallProfilePresetPoints(preset).map(([x, y]) => ({
-    x: 8 + x * 84,
-    y: 4 + y * 34,
-  }));
-  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const polygon = [`8,38`, ...points.map((point) => `${point.x},${point.y}`), `92,38`].join(" ");
+const ADVANCED_PRESETS: PresetDefinition[] = [
+  { id: "parapet-left", fr: "Acrotère gauche", en: "Left parapet", descriptionFr: "Relevé vertical en rive gauche.", descriptionEn: "Raised edge on the left side." },
+  { id: "parapet-right", fr: "Acrotère droit", en: "Right parapet", descriptionFr: "Relevé vertical en rive droite.", descriptionEn: "Raised edge on the right side." },
+  { id: "double-step", fr: "Double décroché", en: "Double step", descriptionFr: "Deux changements successifs de hauteur.", descriptionEn: "Two successive height changes." },
+  { id: "truncated-gable", fr: "Pignon tronqué", en: "Truncated gable", descriptionFr: "Pignon avec sommet horizontal.", descriptionEn: "Gable with a flat top." },
+  { id: "butterfly", fr: "Toiture papillon", en: "Butterfly roof", descriptionFr: "Deux pentes convergent vers le centre.", descriptionEn: "Two slopes meet in a central valley." },
+  { id: "shed", fr: "Shed simple", en: "Single sawtooth", descriptionFr: "Profil industriel en dent de scie.", descriptionEn: "Industrial sawtooth profile." },
+  { id: "double-shed", fr: "Double shed", en: "Double sawtooth", descriptionFr: "Deux dents de scie successives.", descriptionEn: "Two successive sawtooth bays." },
+  { id: "arch", fr: "Voûte approximée", en: "Approximate arch", descriptionFr: "Courbe obtenue avec plusieurs points de profil.", descriptionEn: "Curved shape approximated with profile points." },
+];
 
+function PresetIcon({ preset }: { preset: WallProfilePreset }) {
+  const points = wallProfilePresetPoints(preset).map(([x, y]) => ({ x: 8 + x * 84, y: 4 + y * 34 }));
+  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const polygon = ["8,38", ...points.map((point) => `${point.x},${point.y}`), "92,38"].join(" ");
   return (
     <svg viewBox="0 0 100 42" aria-hidden="true">
       <line className="preset-ground" x1="6" y1="38" x2="94" y2="38" />
@@ -80,12 +95,7 @@ function ProfilePreview({ wall }: { wall: Wall }) {
     x: padding + point.position / length * plotWidth,
     y: height - padding - point.height / maxHeight * plotHeight,
   }));
-  const polygon = [
-    `${padding},${height - padding}`,
-    ...coordinates.map((point) => `${point.x},${point.y}`),
-    `${width - padding},${height - padding}`,
-  ].join(" ");
-
+  const polygon = [`${padding},${height - padding}`, ...coordinates.map((point) => `${point.x},${point.y}`), `${width - padding},${height - padding}`].join(" ");
   return (
     <svg className="profile-preview" viewBox={`0 0 ${width} ${height}`} aria-label="Profil du mur">
       <line className="profile-ground" x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
@@ -96,25 +106,10 @@ function ProfilePreview({ wall }: { wall: Wall }) {
   );
 }
 
-export function WallInspector({
-  wall,
-  language,
-  automaticOrientation,
-  automaticAzimuth,
-  onUpdateWall,
-  onUpdateLength,
-  onAddLayer,
-  onUpdateLayer,
-  onRemoveLayer,
-  onUpdateProfile,
-  onSetProfilePreset,
-  onAddProfilePoint,
-  onRemoveProfilePoint,
-}: Props) {
+export function WallInspector({ wall, language, automaticOrientation, automaticAzimuth, onUpdateWall, onUpdateLength, onAddLayer, onUpdateLayer, onRemoveLayer, onUpdateProfile, onSetProfilePreset, onAddProfilePoint, onRemoveProfilePoint }: Props) {
   const text = translations[language];
   const locale = localeFor(language);
   const automaticLabel = language === "fr" ? "Calculée depuis le nord du projet" : "Calculated from project north";
-
   if (!wall) return null;
   const profile = normalizeProfile(wall);
   const length = wallLength(wall);
@@ -122,107 +117,52 @@ export function WallInspector({
   const updatePoint = (id: string, patch: Partial<ProfilePoint>) => {
     const next = profile.map((point, index) => {
       if (point.id !== id) return point;
-      const position = patch.position === undefined
-        ? point.position
-        : index === 0 ? 0 : index === profile.length - 1 ? length : Math.max(0.01, Math.min(length - 0.01, patch.position));
+      const position = patch.position === undefined ? point.position : index === 0 ? 0 : index === profile.length - 1 ? length : Math.max(0.01, Math.min(length - 0.01, patch.position));
       return { ...point, ...patch, position, height: patch.height === undefined ? point.height : Math.max(0.1, patch.height) };
     }).sort((a, b) => a.position - b.position);
     onUpdateProfile(next);
   };
 
   const applyPreset = (preset: WallProfilePreset) => {
-    if (preset === "rectangle") {
-      onSetProfilePreset("rectangle");
-      return;
-    }
-    if (preset === "slope-up") {
-      onSetProfilePreset("slope");
-      return;
-    }
-    if (preset === "gable-center") {
-      onSetProfilePreset("gable");
-      return;
-    }
+    if (preset === "rectangle") return onSetProfilePreset("rectangle");
+    if (preset === "slope-up") return onSetProfilePreset("slope");
+    if (preset === "gable-center") return onSetProfilePreset("gable");
     onUpdateProfile(wallProfileFromPreset(preset, length, wall.height));
+  };
+
+  const presetButton = (preset: PresetDefinition, detailed = false) => {
+    const label = language === "fr" ? preset.fr : preset.en;
+    const description = language === "fr" ? preset.descriptionFr : preset.descriptionEn;
+    return (
+      <button type="button" className={`wall-profile-preset${detailed ? " detailed" : ""}`} key={preset.id} onClick={() => applyPreset(preset.id)} aria-label={`${language === "fr" ? "Appliquer" : "Apply"} ${label}`} title={description ?? label}>
+        <PresetIcon preset={preset.id} />
+        <span className="wall-profile-preset-copy"><strong>{label}</strong>{detailed && description ? <small>{description}</small> : null}</span>
+      </button>
+    );
   };
 
   return (
     <aside className="inspector" aria-label={text.wallPropertiesAria}>
       <h2>{text.wallProperties}</h2>
       <div className="property-fields">
-        <label>
-          <span>{text.name}</span>
-          <input value={wall.name} onChange={(event) => onUpdateWall({ name: event.target.value })} />
-        </label>
-        <label>
-          <span>{text.wallType}</span>
-          <select value={wall.type} onChange={(event) => onUpdateWall({ type: event.target.value as WallType })}>
-            <option value="external">{text.external}</option>
-            <option value="internal">{text.internal}</option>
-          </select>
-        </label>
-        <label>
-          <span>{text.length}</span>
-          <div className="unit-input">
-            <input type="number" min="0.2" step="0.1" value={length.toFixed(2)} onChange={(event) => onUpdateLength(Number(event.target.value))} />
-            <b>m</b>
-          </div>
-        </label>
-        <label>
-          <span>{text.height}</span>
-          <div className="unit-input">
-            <input
-              type="number"
-              min="0.5"
-              step="0.1"
-              value={wall.height}
-              onChange={(event) => {
-                const height = Math.max(0.5, Number(event.target.value));
-                const currentProfile = normalizeProfile(wall);
-                const delta = height - wall.height;
-                onUpdateWall({ height, profile: currentProfile.map((point) => ({ ...point, height: Math.max(0.1, point.height + delta) })) });
-              }}
-            />
-            <b>m</b>
-          </div>
-        </label>
-        <label>
-          <span>{text.orientation}</span>
-          <div className="orientation-readonly">
-            <strong>{wall.type === "internal" ? text.internal : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong>
-            <small>
-              {wall.type === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{automaticLabel}
-            </small>
-          </div>
-        </label>
+        <label><span>{text.name}</span><input value={wall.name} onChange={(event) => onUpdateWall({ name: event.target.value })} /></label>
+        <label><span>{text.wallType}</span><select value={wall.type} onChange={(event) => onUpdateWall({ type: event.target.value as WallType })}><option value="external">{text.external}</option><option value="internal">{text.internal}</option></select></label>
+        <label><span>{text.length}</span><div className="unit-input"><input type="number" min="0.2" step="0.1" value={length.toFixed(2)} onChange={(event) => onUpdateLength(Number(event.target.value))} /><b>m</b></div></label>
+        <label><span>{text.height}</span><div className="unit-input"><input type="number" min="0.5" step="0.1" value={wall.height} onChange={(event) => { const height = Math.max(0.5, Number(event.target.value)); const currentProfile = normalizeProfile(wall); const delta = height - wall.height; onUpdateWall({ height, profile: currentProfile.map((point) => ({ ...point, height: Math.max(0.1, point.height + delta) })) }); }} /><b>m</b></div></label>
+        <label><span>{text.orientation}</span><div className="orientation-readonly"><strong>{wall.type === "internal" ? text.internal : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong><small>{wall.type === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{automaticLabel}</small></div></label>
       </div>
 
       <div className="inspector-section profile-section">
         <div className="section-title-row"><h3>{text.profile}</h3><span>{formatNumber(wallArea(wall), 2, locale)} m²</span></div>
         <p className="section-help">{text.profileHelp}</p>
-
         <div className="wall-profile-library">
-          <div className="wall-profile-library-title">
-            <strong>{language === "fr" ? "FORMES PRÉDÉFINIES" : "PRESET SHAPES"}</strong>
-            <span>{language === "fr" ? "1 clic" : "1 click"}</span>
-          </div>
-          <div className="wall-profile-grid">
-            {PRESETS.map((preset) => {
-              const label = language === "fr" ? preset.fr : preset.en;
-              return (
-                <button
-                  type="button"
-                  className="wall-profile-preset"
-                  key={preset.id}
-                  onClick={() => applyPreset(preset.id)}
-                  aria-label={`${language === "fr" ? "Appliquer" : "Apply"} ${label}`}
-                >
-                  <PresetIcon preset={preset.id} />
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <div className="wall-profile-library-title"><strong>{language === "fr" ? "FORMES PRÉDÉFINIES" : "PRESET SHAPES"}</strong><span>{language === "fr" ? "1 clic" : "1 click"}</span></div>
+          <div className="wall-profile-grid">{CORE_PRESETS.map((preset) => presetButton(preset))}</div>
+          <details className="wall-profile-more">
+            <summary><span><strong>{language === "fr" ? "Plus de formes bâtiment" : "More building shapes"}</strong><small>{language === "fr" ? "8 formes spécialisées avec aperçu" : "8 specialised shapes with preview"}</small></span><span className="wall-profile-more-arrow" aria-hidden="true">⌄</span></summary>
+            <p className="wall-profile-more-help">{language === "fr" ? "Bloc optionnel pour les géométries moins courantes. Cliquez sur une vignette pour l’appliquer au mur actuel." : "Optional block for less common geometries. Click a thumbnail to apply it to the current wall."}</p>
+            <div className="wall-profile-grid advanced">{ADVANCED_PRESETS.map((preset) => presetButton(preset, true))}</div>
+          </details>
         </div>
 
         <ProfilePreview wall={wall} />
@@ -230,22 +170,8 @@ export function WallInspector({
           <div className="profile-point-header"><span>{text.position}</span><span>{text.height}</span><span /></div>
           {profile.map((point, index) => (
             <div className="profile-point-row" key={point.id}>
-              <div className="unit-input compact">
-                <input
-                  type="number"
-                  min="0"
-                  max={length}
-                  step="0.1"
-                  disabled={index === 0 || index === profile.length - 1}
-                  value={point.position.toFixed(2)}
-                  onChange={(event) => updatePoint(point.id, { position: Number(event.target.value) })}
-                />
-                <b>m</b>
-              </div>
-              <div className="unit-input compact">
-                <input type="number" min="0.1" step="0.1" value={point.height.toFixed(2)} onChange={(event) => updatePoint(point.id, { height: Number(event.target.value) })} />
-                <b>m</b>
-              </div>
+              <div className="unit-input compact"><input type="number" min="0" max={length} step="0.1" disabled={index === 0 || index === profile.length - 1} value={point.position.toFixed(2)} onChange={(event) => updatePoint(point.id, { position: Number(event.target.value) })} /><b>m</b></div>
+              <div className="unit-input compact"><input type="number" min="0.1" step="0.1" value={point.height.toFixed(2)} onChange={(event) => updatePoint(point.id, { height: Number(event.target.value) })} /><b>m</b></div>
               <button className="icon-button" disabled={index === 0 || index === profile.length - 1 || profile.length <= 2} onClick={() => onRemoveProfilePoint(point.id)} aria-label={text.deletePoint}><TrashIcon /></button>
             </div>
           ))}
@@ -263,22 +189,9 @@ export function WallInspector({
             const displayedMaterial = materialLabel(layer.name, language);
             return (
               <div className="layer-row" key={layer.id}>
-                <span className="drag-dots" aria-hidden="true">⠿</span>
-                <span className="material-swatch" style={{ backgroundColor: layer.color }} />
-                <select
-                  aria-label={text.material}
-                  value={layer.name}
-                  onChange={(event) => {
-                    const material = MATERIALS.find((item) => item.name === event.target.value);
-                    if (material) onUpdateLayer(layer.id, material);
-                  }}
-                >
-                  {MATERIALS.map((material) => <option key={material.name} value={material.name}>{materialLabel(material.name, language)}</option>)}
-                </select>
-                <div className="unit-input compact">
-                  <input aria-label={text.thicknessOf(displayedMaterial)} type="number" min="1" step="1" value={layer.thicknessMm} onChange={(event) => onUpdateLayer(layer.id, { thicknessMm: Math.max(1, Number(event.target.value)) })} />
-                  <b>mm</b>
-                </div>
+                <span className="drag-dots" aria-hidden="true">⠿</span><span className="material-swatch" style={{ backgroundColor: layer.color }} />
+                <select aria-label={text.material} value={layer.name} onChange={(event) => { const material = MATERIALS.find((item) => item.name === event.target.value); if (material) onUpdateLayer(layer.id, material); }}>{MATERIALS.map((material) => <option key={material.name} value={material.name}>{materialLabel(material.name, language)}</option>)}</select>
+                <div className="unit-input compact"><input aria-label={text.thicknessOf(displayedMaterial)} type="number" min="1" step="1" value={layer.thicknessMm} onChange={(event) => onUpdateLayer(layer.id, { thicknessMm: Math.max(1, Number(event.target.value)) })} /><b>mm</b></div>
                 <button className="icon-button" aria-label={text.deleteMaterial(displayedMaterial)} onClick={() => onRemoveLayer(layer.id)} disabled={wall.layers.length === 1}><TrashIcon /></button>
               </div>
             );
@@ -289,11 +202,7 @@ export function WallInspector({
 
       <div className="inspector-section performance-section">
         <h3>{text.performances}</h3>
-        <dl className="performance-list">
-          <div><dt>R</dt><dd><strong>R = {formatNumber(wallResistance(wall), 2, locale)}</strong> m²·K/W</dd></div>
-          <div><dt>U</dt><dd><strong>U = {formatNumber(wallUValue(wall), 2, locale)}</strong> W/m²·K</dd></div>
-          <div><dt>□</dt><dd><strong>{text.surface} = {formatNumber(wallArea(wall), 2, locale)}</strong> m²</dd></div>
-        </dl>
+        <dl className="performance-list"><div><dt>R</dt><dd><strong>R = {formatNumber(wallResistance(wall), 2, locale)}</strong> m²·K/W</dd></div><div><dt>U</dt><dd><strong>U = {formatNumber(wallUValue(wall), 2, locale)}</strong> W/m²·K</dd></div><div><dt>□</dt><dd><strong>{text.surface} = {formatNumber(wallArea(wall), 2, locale)}</strong> m²</dd></div></dl>
       </div>
     </aside>
   );
