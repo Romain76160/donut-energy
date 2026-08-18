@@ -31,7 +31,7 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="brand" aria-label="Donut Energy">
-        <img src="/assets/donut-mark-web.png" alt="" />
+        <img src={`${import.meta.env.BASE_URL}assets/donut-mark-web.png`} alt="" />
         <span>DONUT ENERGY</span>
       </div>
       <input
