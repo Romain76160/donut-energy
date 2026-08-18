@@ -100,8 +100,8 @@ export const orientationFromPoints = (start: Point, end: Point): Orientation => 
   return dx >= 0 ? "Est" : "Ouest";
 };
 
-export const formatNumber = (value: number, decimals = 2) =>
-  new Intl.NumberFormat("fr-FR", {
+export const formatNumber = (value: number, decimals = 2, locale = "fr-FR") =>
+  new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
