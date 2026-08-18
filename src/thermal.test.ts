@@ -9,6 +9,11 @@ const wall: Wall = {
   end: { x: 8, y: 0 },
   height: 2.8,
   orientation: "Nord",
+  type: "external",
+  profile: [
+    { id: "p0", position: 0, height: 2.8 },
+    { id: "p1", position: 8, height: 2.8 },
+  ],
   layers: [
     { id: "plaster", name: "Plaque de plâtre", thicknessMm: 13, conductivity: 0.25, color: "#fff" },
     { id: "wool", name: "Laine de verre", thicknessMm: 120, conductivity: 0.03, color: "#fff" },
@@ -17,8 +22,16 @@ const wall: Wall = {
 };
 
 describe("thermal wall calculations", () => {
-  it("calculates area from length and height", () => {
+  it("calculates a rectangular profile area", () => {
     expect(wallArea(wall)).toBeCloseTo(22.4);
+  });
+
+  it("calculates a gable profile area", () => {
+    expect(wallArea({ ...wall, profile: [
+      { id: "g0", position: 0, height: 2.8 },
+      { id: "g1", position: 4, height: 4.3 },
+      { id: "g2", position: 8, height: 2.8 },
+    ] })).toBeCloseTo(28.4);
   });
 
   it("includes internal and external surface resistances", () => {
@@ -26,7 +39,7 @@ describe("thermal wall calculations", () => {
     expect(wallUValue(wall)).toBeCloseTo(0.22, 1);
   });
 
-  it("aggregates perimeter and wall area", () => {
+  it("aggregates external perimeter and wall area", () => {
     expect(projectPerimeter([wall, wall])).toBe(16);
     expect(projectWallArea([wall, wall])).toBeCloseTo(44.8);
   });
