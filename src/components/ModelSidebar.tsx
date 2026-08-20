@@ -53,6 +53,7 @@ export function ModelSidebar({
   const text = translations[language];
   const defaultWallsLabel = language === "fr" ? "Murs par défaut" : "Default walls";
   const virtualLabel = language === "fr" ? "Séparation virtuelle" : "Virtual boundary";
+  const voidLabel = language === "fr" ? "vide" : "open";
   const wallTypeLabel = (wall: Wall) => wall.type === "external"
     ? text.external
     : wall.type === "internal"
@@ -105,7 +106,8 @@ export function ModelSidebar({
         <div className="level-list">
           {levels.map((level) => (
             <button key={level.id} className={level.id === activeLevelId ? "active" : ""} onClick={() => onSelectLevel(level.id)}>
-              <span>{level.name}</span><small>{level.elevation.toFixed(2)} m</small>
+              <span>{level.name}</span>
+              <small>{level.elevation.toFixed(2)} → {level.ceilingElevation.toFixed(2)} m{level.openToBelow ? ` · ${voidLabel}` : ""}</small>
             </button>
           ))}
         </div>
