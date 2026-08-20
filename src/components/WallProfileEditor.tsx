@@ -104,7 +104,7 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
   const labels = language === "fr" ? {
     add: "Ajouter un point",
     adding: "Cliquez dans le dessin",
-    help: "Glissez les points. Double-cliquez dans le dessin pour en ajouter un. Les cotes sont modifiables directement.",
+    help: "Activez Ajouter un point, puis cliquez dans le dessin. Glissez ensuite les points et modifiez les cotes directement.",
     position: "Position",
     height: "Hauteur",
     delete: "Supprimer",
@@ -112,7 +112,7 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
   } : {
     add: "Add point",
     adding: "Click in the drawing",
-    help: "Drag points. Double-click the drawing to add one. Dimensions can be edited directly.",
+    help: "Enable Add point, then click the drawing. Drag points and edit dimensions directly.",
     position: "Position",
     height: "Height",
     delete: "Delete",
@@ -135,7 +135,6 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           role="img"
           aria-label={language === "fr" ? "Profil de mur éditable" : "Editable wall elevation"}
-          onDoubleClick={(event) => addPointAt(event.clientX, event.clientY)}
           onClick={(event) => {
             if (addMode) addPointAt(event.clientX, event.clientY);
             else setSelectedId(null);
