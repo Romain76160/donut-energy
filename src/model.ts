@@ -49,8 +49,14 @@ export type SurfaceAssembly = {
 export type Level = {
   id: string;
   name: string;
+  /** Absolute altitude of the finished floor reference plane. */
   elevation: number;
+  /** Absolute altitude of the ceiling / upper horizontal reference plane. */
+  ceilingElevation: number;
+  /** Default wall height for new walls. Kept for compatibility and derived from the two planes. */
   defaultHeight: number;
+  /** When true, no floor separates this level from the level below. */
+  openToBelow: boolean;
   showLowerReference: boolean;
   walls: Wall[];
   floor: SurfaceAssembly;
@@ -104,6 +110,12 @@ export const ceilingLayers = (): WallLayer[] => [
   { id: createId(), thicknessMm: 13, ...MATERIALS[0] },
   { id: createId(), thicknessMm: 200, ...MATERIALS[6] },
 ];
+
+export const levelClearHeight = (level: Pick<Level, "elevation" | "ceilingElevation">) =>
+  Math.max(0.1, level.ceilingElevation - level.elevation);
+
+export const levelPhysicalFloorArea = (level: Pick<Level, "openToBelow">, geometricArea: number) =>
+  level.openToBelow ? 0 : geometricArea;
 
 export const wallLength = (wall: Pick<Wall, "start" | "end">) =>
   Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
@@ -169,18 +181,31 @@ const createWall = (name: string, start: Point, end: Point, type: WallType, heig
   profile: rectangleProfile(Math.hypot(end.x - start.x, end.y - start.y), height),
 });
 
-export const createLevel = (name: string, elevation: number, withSeedWalls = false): Level => {
+export type CreateLevelOptions = {
+  ceilingElevation?: number;
+  openToBelow?: boolean;
+  defaultHeight?: number;
+};
+
+export const createLevel = (name: string, elevation: number, withSeedWalls = false, options: CreateLevelOptions = {}): Level => {
+  const requestedHeight = Number.isFinite(options.defaultHeight) ? Math.max(0.5, Number(options.defaultHeight)) : 2.8;
+  const ceilingElevation = Number.isFinite(options.ceilingElevation)
+    ? Math.max(elevation + 0.1, Number(options.ceilingElevation))
+    : elevation + requestedHeight;
+  const defaultHeight = Math.max(0.1, ceilingElevation - elevation);
   const walls = withSeedWalls ? [
-    createWall("Mur Nord", { x: -4, y: -4 }, { x: 4, y: -4 }, "external"),
-    createWall("Mur Est", { x: 4, y: -4 }, { x: 4, y: 4 }, "external"),
-    createWall("Mur Sud", { x: 4, y: 4 }, { x: -4, y: 4 }, "external"),
-    createWall("Mur Ouest", { x: -4, y: 4 }, { x: -4, y: -4 }, "external"),
+    createWall("Mur Nord", { x: -4, y: -4 }, { x: 4, y: -4 }, "external", defaultHeight),
+    createWall("Mur Est", { x: 4, y: -4 }, { x: 4, y: 4 }, "external", defaultHeight),
+    createWall("Mur Sud", { x: 4, y: 4 }, { x: -4, y: 4 }, "external", defaultHeight),
+    createWall("Mur Ouest", { x: -4, y: 4 }, { x: -4, y: -4 }, "external", defaultHeight),
   ] : [];
   return {
     id: createId(),
     name,
     elevation,
-    defaultHeight: 2.8,
+    ceilingElevation,
+    defaultHeight,
+    openToBelow: options.openToBelow === true,
     showLowerReference: true,
     walls,
     floor: { name: "Plancher", layers: floorLayers() },
@@ -239,15 +264,22 @@ export const migrateProject = (value: unknown): Project => {
   if (Array.isArray(source.levels) && source.levels.length) {
     const levels = source.levels.map((levelValue, index) => {
       const levelSource = levelValue && typeof levelValue === "object" ? levelValue as Partial<Level> : {};
-      const defaultHeight = Number.isFinite(levelSource.defaultHeight) ? Math.max(2, Number(levelSource.defaultHeight)) : 2.8;
+      const elevation = Number.isFinite(levelSource.elevation) ? Number(levelSource.elevation) : index * 3;
+      const legacyHeight = Number.isFinite(levelSource.defaultHeight) ? Math.max(0.5, Number(levelSource.defaultHeight)) : 2.8;
+      const ceilingElevation = Number.isFinite(levelSource.ceilingElevation)
+        ? Math.max(elevation + 0.1, Number(levelSource.ceilingElevation))
+        : elevation + legacyHeight;
+      const defaultHeight = Math.max(0.1, ceilingElevation - elevation);
       const walls = Array.isArray(levelSource.walls)
         ? levelSource.walls.map((wall, wallIndex) => migrateWall(wall, wallIndex, defaultHeight)).filter((wall): wall is Wall => Boolean(wall))
         : [];
       return {
         id: typeof levelSource.id === "string" ? levelSource.id : createId(),
         name: typeof levelSource.name === "string" ? levelSource.name : `Niveau ${index + 1}`,
-        elevation: Number.isFinite(levelSource.elevation) ? Number(levelSource.elevation) : index * 3,
+        elevation,
+        ceilingElevation,
         defaultHeight,
+        openToBelow: levelSource.openToBelow === true,
         showLowerReference: levelSource.showLowerReference !== false,
         walls,
         floor: levelSource.floor?.layers?.length ? levelSource.floor : { name: "Plancher", layers: floorLayers() },
