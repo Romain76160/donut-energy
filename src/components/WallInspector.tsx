@@ -10,12 +10,14 @@ import {
   type ProfilePoint,
   type Wall,
   type WallLayer,
+  type WallOpening,
   type WallType,
 } from "../model";
-import { wallArea, wallResistance, wallUValue } from "../thermal";
+import { wallArea, wallOpeningArea, wallOpaqueArea, wallResistance, wallTransmissionCoefficient, wallUValue } from "../thermal";
 import { normalizeWallSectionProfile } from "../wallInclination";
 import { wallProfileFromPreset, type WallProfilePreset } from "../wallProfilePresets";
 import "../wall-inspector-editing.css";
+import { WallOpeningsEditor } from "./WallOpeningsEditor";
 import { WallProfileEditor } from "./WallProfileEditor";
 import { WallSectionView } from "./WallSectionView";
 import { WallShapeLibrary } from "./WallShapeLibrary";
@@ -87,6 +89,11 @@ export function WallInspector({
     const delta = height - wall.height;
     const currentSection = normalizeWallSectionProfile(wall);
     const ratio = height / Math.max(0.1, wall.height);
+    const openings = (wall.openings ?? []).map((opening) => ({
+      ...opening,
+      height: Math.min(opening.height, height),
+      sillHeight: opening.type === "window" ? Math.min(opening.sillHeight, Math.max(0, height - Math.min(opening.height, height))) : 0,
+    } satisfies WallOpening));
     onUpdateWall({
       height,
       profile: currentProfile.map((point) => ({ ...point, height: Math.max(0.1, point.height + delta) })),
@@ -95,6 +102,7 @@ export function WallInspector({
         height: index === 0 ? 0 : index === currentSection.length - 1 ? height : point.height * ratio,
         offset: point.offset * ratio,
       })),
+      openings,
     });
   };
 
@@ -185,6 +193,12 @@ export function WallInspector({
 
       <WallSectionView wall={wall} language={language} onUpdateWall={onUpdateWall} onHeightChange={changeHeight} />
 
+      <WallOpeningsEditor
+        wall={wall}
+        language={language}
+        onChange={(openings) => onUpdateWall({ openings })}
+      />
+
       <div className="inspector-section">
         <h3>{text.composition}</h3>
         <div className="layer-columns"><span>{text.material}</span><span>{text.thickness}</span></div>
@@ -222,7 +236,10 @@ export function WallInspector({
         <dl className="performance-list">
           <div><dt>R</dt><dd><strong>R = {formatNumber(wallResistance(wall), 2, locale)}</strong> m²·K/W</dd></div>
           <div><dt>U</dt><dd><strong>U = {formatNumber(wallUValue(wall), 2, locale)}</strong> W/m²·K</dd></div>
-          <div><dt>□</dt><dd><strong>{text.surface} = {formatNumber(wallArea(wall), 2, locale)}</strong> m²</dd></div>
+          <div><dt>□</dt><dd><strong>{language === "fr" ? "Surface brute" : "Gross area"} = {formatNumber(wallArea(wall), 2, locale)}</strong> m²</dd></div>
+          <div><dt>▣</dt><dd><strong>{language === "fr" ? "Ouvertures" : "Openings"} = {formatNumber(wallOpeningArea(wall), 2, locale)}</strong> m²</dd></div>
+          <div><dt>■</dt><dd><strong>{language === "fr" ? "Opaque" : "Opaque"} = {formatNumber(wallOpaqueArea(wall), 2, locale)}</strong> m²</dd></div>
+          <div><dt>H</dt><dd><strong>H = {formatNumber(wallTransmissionCoefficient(wall), 2, locale)}</strong> W/K</dd></div>
         </dl>
       </div>
 
