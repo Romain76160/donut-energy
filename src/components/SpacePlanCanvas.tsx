@@ -4,10 +4,12 @@ import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "../icons";
 import { snapPoint, wallOrientationFromNorth } from "../geometry";
 import { localeFor, orientationLabel, translations, type Language } from "../i18n";
 import { formatNumber, wallLength, type EditorMode, type Point, type Space, type Wall } from "../model";
+import { openingCenterPoint, openingTypeLabel, wallOpenings } from "../openings";
 import "../north-control.css";
 import "../virtual-walls.css";
 import "../spaces.css";
 import "../adjacency.css";
+import "../openings.css";
 
 const VIEW_WIDTH = 900;
 const VIEW_HEIGHT = 680;
@@ -263,6 +265,19 @@ export function SpacePlanCanvas({
             : null;
           const sideA = selected ? project(wallSideAnchor(wall, "A")) : null;
           const sideB = selected ? project(wallSideAnchor(wall, "B")) : null;
+          const length = wallLength(wall);
+          const tangent = length > 0
+            ? { x: (wall.end.x - wall.start.x) / length, y: (wall.end.y - wall.start.y) / length }
+            : { x: 1, y: 0 };
+          const normalScreen = { x: -tangent.y, y: tangent.x };
+          const openingMarkers = wallOpenings(wall).map((opening) => {
+            const centerWorld = openingCenterPoint(wall, opening);
+            const half = opening.width / 2;
+            const a = project({ x: centerWorld.x - tangent.x * half, y: centerWorld.y - tangent.y * half });
+            const b = project({ x: centerWorld.x + tangent.x * half, y: centerWorld.y + tangent.y * half });
+            const center = project(centerWorld);
+            return { opening, a, b, center };
+          });
           return (
             <g
               key={wall.id}
@@ -275,6 +290,17 @@ export function SpacePlanCanvas({
             >
               <line className="wall-hitbox" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
               <line className="wall-line" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
+              {openingMarkers.map(({ opening, a, b, center }) => (
+                <g className={`wall-opening-marker ${opening.type}`} key={opening.id}>
+                  <line className="opening-mask" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                  <line className="opening-symbol" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                  {selected ? (
+                    <text x={center.x + normalScreen.x * 14} y={center.y + normalScreen.y * 14} textAnchor="middle">
+                      {openingTypeLabel(opening.type, language)}
+                    </text>
+                  ) : null}
+                </g>
+              ))}
               <circle className="wall-node" cx={start.x} cy={start.y} r="7" />
               <circle className="wall-node" cx={end.x} cy={end.y} r="7" />
               <text x={midX + (horizontal ? 0 : 25)} y={midY + (horizontal ? -20 : 4)} textAnchor="middle">
