@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { PlusIcon, TrashIcon } from "../icons";
 import { localeFor, type Language } from "../i18n";
 import { OPENING_PLAN_MOVE_EVENT, type OpeningPlanMoveDetail } from "../openingEditing";
+import { removeOpeningDepth } from "../openingDepth";
 import { formatNumber, wallLength, type OpeningType, type Wall, type WallOpening } from "../model";
 import { defaultOpening, normalizeOpening, openingArea, openingTypeLabel, wallOpenings } from "../openings";
 import "../openings.css";
+import { OpeningDepthEditor } from "./OpeningDepthEditor";
 import { OpeningElevationEditor } from "./OpeningElevationEditor";
 
 type Props = {
@@ -19,7 +21,7 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
   const length = wallLength(wall);
   const labels = language === "fr" ? {
     title: "OUVERTURES",
-    help: "Glissez les ouvertures directement sur le plan ou dans l’élévation. Les champs restent disponibles pour un réglage précis.",
+    help: "Glissez les ouvertures sur le plan ou dans l’élévation, puis réglez aussi la position du dormant dans l’épaisseur du mur.",
     addWindow: "Fenêtre",
     addDoor: "Porte",
     addGlazedDoor: "Baie vitrée",
@@ -36,7 +38,7 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     delete: "Supprimer l’ouverture",
   } : {
     title: "OPENINGS",
-    help: "Drag openings directly on the plan or in the elevation. Numeric fields remain available for precise adjustment.",
+    help: "Drag openings on the plan or elevation, then also set the frame position through the wall depth.",
     addWindow: "Window",
     addDoor: "Door",
     addGlazedDoor: "Glazed door",
@@ -80,7 +82,10 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     emit(openings.map((opening) => opening.id === id ? { ...opening, ...patch } : opening));
   };
 
-  const removeOpening = (id: string) => emit(openings.filter((opening) => opening.id !== id));
+  const removeOpening = (id: string) => {
+    removeOpeningDepth(wall.id, id);
+    emit(openings.filter((opening) => opening.id !== id));
+  };
 
   const totalArea = openings.reduce((total, opening) => total + openingArea(opening), 0);
 
@@ -112,6 +117,8 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
               </div>
               <button className="icon-button" type="button" onClick={() => removeOpening(opening.id)} aria-label={labels.delete}><TrashIcon /></button>
             </div>
+
+            <OpeningDepthEditor wall={wall} opening={opening} language={language} />
 
             <div className="opening-fields">
               <label className="opening-wide-field">
