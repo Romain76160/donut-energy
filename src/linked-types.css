@@ -1,0 +1,44 @@
+.window-type-picker.is-linked {
+  border-color: #9bc5d5;
+  background: #f6fbfd;
+}
+
+.linked-type-state {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 1px solid #b9d8e5;
+  border-radius: 7px;
+  background: #edf7fa;
+}
+
+.linked-type-state span {
+  color: #28708a;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.linked-type-state strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #184f64;
+  font-size: 10px;
+}
+
+.linked-type-state button {
+  border: 1px solid #aacbd7;
+  border-radius: 6px;
+  background: #fff;
+  color: #315766;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
