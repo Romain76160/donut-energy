@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-donut-ready="0">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,13 +9,122 @@
       content="Donut Energy — éditeur de murs pour la simulation thermique dynamique."
     />
     <title>Donut Energy — Modélisation des murs</title>
+    <script>
+      (() => {
+        const escapeHtml = (value) => String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+
+        const currentModuleUrl = () =>
+          document.querySelector('script[type="module"][src]')?.src || "module non détecté";
+
+        const cleanRecoveryParams = () => {
+          try {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.has("donut_recovery") && !url.searchParams.has("donut_fresh")) return;
+            url.searchParams.delete("donut_recovery");
+            url.searchParams.delete("donut_fresh");
+            window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+          } catch {
+            // Le nettoyage de l'URL n'est pas indispensable au fonctionnement de l'application.
+          }
+        };
+
+        const hardReload = () => {
+          const url = new URL(window.location.href);
+          url.searchParams.set("donut_recovery", "1");
+          url.searchParams.set("donut_fresh", String(Date.now()));
+          window.location.replace(url.toString());
+        };
+
+        const retryFromDiagnostic = () => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("donut_recovery");
+          url.searchParams.set("donut_fresh", String(Date.now()));
+          window.location.replace(url.toString());
+        };
+
+        const renderBootstrapFailure = (reason) => {
+          const root = document.getElementById("root");
+          if (!root) return;
+          const moduleUrl = currentModuleUrl();
+          root.innerHTML = `
+            <div style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0c1729;background:#fff">
+              <div style="width:min(720px,100%);padding:24px;border:1px solid #e4e7ec;border-radius:12px;box-shadow:0 8px 30px rgba(16,24,40,.08)">
+                <h1 style="margin:0 0 12px;font-size:22px">Donut Energy — module JavaScript non chargé</h1>
+                <p style="margin:0 0 14px;line-height:1.55;color:#475467">La page HTML est disponible, mais le bundle JavaScript n'a pas démarré. Un rechargement sans cache a déjà été tenté automatiquement.</p>
+                <pre style="margin:0 0 14px;padding:14px;overflow:auto;border-radius:8px;background:#f8fafc;color:#b42318;white-space:pre-wrap;font-size:12px">${escapeHtml(reason)}\n\nScript : ${escapeHtml(moduleUrl)}\nPage : ${escapeHtml(window.location.href)}</pre>
+                <button id="donut-hard-reload" type="button" style="min-height:40px;padding:0 14px;border:0;border-radius:7px;background:#13253f;color:#fff;font-weight:700;cursor:pointer">Recharger sans cache</button>
+              </div>
+            </div>`;
+          document.getElementById("donut-hard-reload")?.addEventListener("click", retryFromDiagnostic);
+        };
+
+        let recoveryStarted = false;
+        const recover = (reason) => {
+          if (document.documentElement.dataset.donutReady === "1" || recoveryStarted) return;
+          recoveryStarted = true;
+          const url = new URL(window.location.href);
+          if (url.searchParams.get("donut_recovery") !== "1") {
+            hardReload();
+            return;
+          }
+          renderBootstrapFailure(reason);
+        };
+
+        window.__donutBootstrap = {
+          ready() {
+            document.documentElement.dataset.donutReady = "1";
+            cleanRecoveryParams();
+          },
+          fail(reason) {
+            renderBootstrapFailure(reason);
+          },
+        };
+
+        window.addEventListener("error", (event) => {
+          if (document.documentElement.dataset.donutReady === "1") return;
+          const target = event.target;
+          if (target instanceof HTMLScriptElement && target.type === "module") {
+            recover(`Échec du chargement du module : ${target.src || "URL inconnue"}`);
+            return;
+          }
+          if (event.error || event.message) {
+            const detail = event.error instanceof Error
+              ? `${event.error.name}: ${event.error.message}`
+              : event.message || "Erreur JavaScript avant le démarrage de l'application";
+            recover(detail);
+          }
+        }, true);
+
+        window.addEventListener("unhandledrejection", (event) => {
+          if (document.documentElement.dataset.donutReady === "1") return;
+          const reason = event.reason instanceof Error
+            ? `${event.reason.name}: ${event.reason.message}`
+            : String(event.reason ?? "Promesse rejetée avant le démarrage");
+          recover(reason);
+        });
+
+        window.addEventListener("vite:preloadError", (event) => {
+          event.preventDefault();
+          recover("Vite n'a pas pu charger un fichier du déploiement courant.");
+        });
+
+        window.setTimeout(() => {
+          if (document.documentElement.dataset.donutReady !== "1") {
+            recover(`Le module JavaScript n'a pas démarré après 7 secondes. Module attendu : ${currentModuleUrl()}`);
+          }
+        }, 7000);
+      })();
+    </script>
   </head>
   <body>
     <div id="root">
       <div style="min-height:100vh;display:grid;place-items:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0c1729;background:#fff;text-align:center">
         <div>
           <strong style="font-size:20px">Chargement de Donut Energy…</strong>
-          <p style="max-width:520px;line-height:1.5;color:#667085">Si ce message reste affiché après quelques secondes, le fichier JavaScript du site n’a pas été chargé par GitHub Pages.</p>
+          <p style="max-width:520px;line-height:1.5;color:#667085">Vérification du bundle JavaScript en cours…</p>
         </div>
       </div>
     </div>
