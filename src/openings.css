@@ -1,0 +1,158 @@
+.wall-openings-section {
+  display: grid;
+  gap: 12px;
+}
+
+.opening-add-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opening-add-row button {
+  min-height: 38px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  color: #233047;
+  font: inherit;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.opening-add-row button:hover {
+  border-color: #98a2b3;
+  background: #f8fafc;
+}
+
+.opening-add-row svg {
+  width: 15px;
+  height: 15px;
+}
+
+.opening-empty {
+  padding: 14px;
+  border: 1px dashed #d0d5dd;
+  border-radius: 8px;
+  color: #667085;
+  background: #fcfcfd;
+  font-size: 13px;
+  text-align: center;
+}
+
+.opening-list {
+  display: grid;
+  gap: 10px;
+}
+
+.opening-card {
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.opening-card.window {
+  border-left: 3px solid #54a6c8;
+}
+
+.opening-card.door {
+  border-left: 3px solid #a7764b;
+}
+
+.opening-card.glazed-door {
+  border-left: 3px solid #5b8ea5;
+}
+
+.opening-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.opening-card-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.opening-card-head strong {
+  color: #182230;
+  font-size: 13px;
+}
+
+.opening-card-head small {
+  color: #667085;
+  font-size: 11px;
+}
+
+.opening-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.opening-fields label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.opening-fields label > span {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.opening-fields input,
+.opening-fields select {
+  min-width: 0;
+}
+
+.opening-wide-field {
+  grid-column: 1 / -1;
+}
+
+.wall-opening-marker .opening-mask {
+  stroke: #fff;
+  stroke-width: 9;
+  stroke-linecap: butt;
+}
+
+.wall-opening-marker .opening-symbol {
+  stroke-width: 4;
+  stroke-linecap: butt;
+  pointer-events: none;
+}
+
+.wall-opening-marker.window .opening-symbol,
+.wall-opening-marker.glazed-door .opening-symbol {
+  stroke: #4f91ad;
+}
+
+.wall-opening-marker.door .opening-symbol {
+  stroke: #9a6a45;
+}
+
+.wall-opening-marker text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #344054;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+@media (max-width: 1180px) {
+  .opening-add-row {
+    grid-template-columns: 1fr;
+  }
+}
