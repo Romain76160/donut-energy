@@ -1,0 +1,62 @@
+.shape-library-launch {
+  width: 100%;
+  min-height: 38px;
+  margin: 9px 0 4px;
+  padding: 0 11px;
+  border: 1px solid #cfd9e3;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #314b69;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.shape-library-launch:hover {
+  border-color: #efb48d;
+  background: #fff7f1;
+  color: #a64c18;
+}
+
+.shape-library-launch span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.shape-library-launch svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.shape-library-launch small {
+  color: #8290a0;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.numeric-point-editor {
+  margin-top: 9px;
+  border-top: 1px solid #edf0f3;
+  padding-top: 8px;
+}
+
+.numeric-point-editor summary {
+  cursor: pointer;
+  color: #617185;
+  font-size: 9px;
+  font-weight: 800;
+  user-select: none;
+}
+
+.numeric-point-editor[open] summary {
+  margin-bottom: 8px;
+}
