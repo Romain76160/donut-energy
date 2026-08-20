@@ -6,7 +6,6 @@ import {
   inclinationFromTopOffset,
   normalizeWallSectionProfile,
   persistWallInclination,
-  wallInclinationDeg,
   wallSectionTopOffset,
   wallSectionTrueHeight,
   wallTopOffset,
@@ -172,6 +171,15 @@ export function WallSectionView({ wall, language, onUpdateWall, onHeightChange }
     onUpdateWall({ inclinationDeg: nextInclination, sectionProfile: next });
   };
 
+  const resetStraight = () => {
+    const next = normalizeWallSectionProfile({ ...wall, inclinationDeg: 90, sectionProfile: undefined });
+    persistWallInclination(wall.id, 90);
+    setSelectedId(null);
+    setAddMode(false);
+    setDraftSafe(next);
+    onUpdateWall({ sectionProfile: undefined, inclinationDeg: 90 });
+  };
+
   const selected = draft.find((point) => point.id === selectedId) ?? null;
   const selectedCanvas = selected ? toCanvas(selected) : null;
   const selectedIndex = selected ? draft.findIndex((point) => point.id === selected.id) : -1;
@@ -184,7 +192,7 @@ export function WallSectionView({ wall, language, onUpdateWall, onHeightChange }
 
       <div className="section-editor-toolbar">
         <button type="button" className={addMode ? "active" : ""} onClick={() => setAddMode((current) => !current)}><span aria-hidden="true">＋</span>{addMode ? labels.adding : labels.add}</button>
-        <button type="button" onClick={() => { setSelectedId(null); changeInclination(90); onUpdateWall({ sectionProfile: undefined, inclinationDeg: 90 }); }}>{labels.reset}</button>
+        <button type="button" onClick={resetStraight}>{labels.reset}</button>
       </div>
 
       <div className={`section-editor-stage${addMode ? " adding" : ""}`}>
@@ -194,7 +202,6 @@ export function WallSectionView({ wall, language, onUpdateWall, onHeightChange }
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           role="img"
           aria-label={labels.sectionAria}
-          onDoubleClick={(event) => addPointAt(event.clientX, event.clientY)}
           onClick={(event) => {
             if (addMode) addPointAt(event.clientX, event.clientY);
             else setSelectedId(null);
@@ -264,7 +271,7 @@ export function WallSectionView({ wall, language, onUpdateWall, onHeightChange }
 
       <div className="inclination-presets">
         <button onClick={() => changeInclination(75)}>75°</button>
-        <button className={Math.abs(wallInclinationDeg({ ...wall, inclinationDeg: inclination }) - 90) < 0.5 ? "active" : ""} onClick={() => changeInclination(90)}>90° · {labels.vertical}</button>
+        <button className={Math.abs(inclination - 90) < 0.5 ? "active" : ""} onClick={() => changeInclination(90)}>90° · {labels.vertical}</button>
         <button onClick={() => changeInclination(105)}>105°</button>
       </div>
 
