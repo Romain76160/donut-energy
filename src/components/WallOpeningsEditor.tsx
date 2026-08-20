@@ -1,13 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PlusIcon, TrashIcon } from "../icons";
 import { localeFor, type Language } from "../i18n";
 import { OPENING_PLAN_MOVE_EVENT, type OpeningPlanMoveDetail } from "../openingEditing";
-import { removeOpeningDepth } from "../openingDepth";
+import { removeOpeningDepth, writeOpeningDepth } from "../openingDepth";
 import { formatNumber, wallLength, type OpeningType, type Wall, type WallOpening } from "../model";
 import { defaultOpening, normalizeOpening, openingArea, openingTypeLabel, wallOpenings } from "../openings";
+import {
+  applyWindowTypeToOpening,
+  loadWindowTypes,
+  saveWindowTypes,
+  type WindowTypeDefinition,
+} from "../windowTypes";
 import "../openings.css";
 import { OpeningDepthEditor } from "./OpeningDepthEditor";
 import { OpeningElevationEditor } from "./OpeningElevationEditor";
+import { WindowTypeLibrary, WindowTypePicker } from "./WindowTypeLibrary";
 
 type Props = {
   wall: Wall;
@@ -19,9 +26,10 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
   const locale = localeFor(language);
   const openings = wallOpenings(wall);
   const length = wallLength(wall);
+  const [windowTypes, setWindowTypes] = useState<WindowTypeDefinition[]>(loadWindowTypes);
   const labels = language === "fr" ? {
     title: "OUVERTURES",
-    help: "Glissez les ouvertures sur le plan ou dans l’élévation, puis réglez aussi la position du dormant dans l’épaisseur du mur.",
+    help: "Glissez les ouvertures sur le plan ou dans l’élévation. Créez aussi des types de fenêtres réutilisables avec géométrie, cadre, dormant et paramètres thermiques.",
     addWindow: "Fenêtre",
     addDoor: "Porte",
     addGlazedDoor: "Baie vitrée",
@@ -38,7 +46,7 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     delete: "Supprimer l’ouverture",
   } : {
     title: "OPENINGS",
-    help: "Drag openings on the plan or elevation, then also set the frame position through the wall depth.",
+    help: "Drag openings on the plan or elevation. You can also create reusable window types with geometry, frame, installation depth and thermal properties.",
     addWindow: "Window",
     addDoor: "Door",
     addGlazedDoor: "Glazed door",
@@ -69,6 +77,11 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     return () => window.removeEventListener(OPENING_PLAN_MOVE_EVENT, handlePlanMove);
   }, [wall, onChange]);
 
+  const changeWindowTypes = (next: WindowTypeDefinition[]) => {
+    setWindowTypes(next);
+    saveWindowTypes(next);
+  };
+
   const addOpening = (type: OpeningType) => {
     const next = defaultOpening(type, wall, openings.length);
     if (openings.length > 0 && length > next.width) {
@@ -80,6 +93,11 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
 
   const updateOpening = (id: string, patch: Partial<WallOpening>) => {
     emit(openings.map((opening) => opening.id === id ? { ...opening, ...patch } : opening));
+  };
+
+  const applyWindowType = (openingId: string, type: WindowTypeDefinition) => {
+    emit(openings.map((opening) => opening.id === openingId ? applyWindowTypeToOpening(opening, type) : opening));
+    writeOpeningDepth(wall, openingId, { mode: type.depthMode, frameDepthMm: type.frameDepthMm });
   };
 
   const removeOpening = (id: string) => {
@@ -103,6 +121,8 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
         <button type="button" onClick={() => addOpening("glazed-door")}><PlusIcon /> {labels.addGlazedDoor}</button>
       </div>
 
+      <WindowTypeLibrary types={windowTypes} language={language} onChange={changeWindowTypes} />
+
       {openings.length > 0 ? (
         <OpeningElevationEditor wall={wall} openings={openings} language={language} onChange={emit} />
       ) : <div className="opening-empty">{labels.none}</div>}
@@ -117,6 +137,14 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
               </div>
               <button className="icon-button" type="button" onClick={() => removeOpening(opening.id)} aria-label={labels.delete}><TrashIcon /></button>
             </div>
+
+            {opening.type === "window" ? (
+              <WindowTypePicker
+                types={windowTypes}
+                language={language}
+                onApply={(type) => applyWindowType(opening.id, type)}
+              />
+            ) : null}
 
             <OpeningDepthEditor wall={wall} opening={opening} language={language} />
 
