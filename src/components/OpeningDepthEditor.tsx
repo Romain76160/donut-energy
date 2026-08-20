@@ -10,6 +10,7 @@ import {
   type OpeningDepthMode,
   type OpeningDepthState,
 } from "../openingDepth";
+import "../opening-depth.css";
 
 const MODES: OpeningDepthMode[] = ["interior", "center", "exterior"];
 
