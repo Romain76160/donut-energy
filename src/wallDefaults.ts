@@ -2,9 +2,9 @@ import {
   cloneLayers,
   externalWallLayers,
   internalWallLayers,
+  type PhysicalWallType,
   type Wall,
   type WallLayer,
-  type WallType,
 } from "./model";
 
 export type WallDefaultTemplate = {
@@ -21,7 +21,7 @@ export type WallDefaults = {
 
 const STORAGE_KEY = "donut-energy-wall-defaults";
 
-const standardTemplate = (type: WallType): WallDefaultTemplate => ({
+const standardTemplate = (type: PhysicalWallType): WallDefaultTemplate => ({
   label: type === "external" ? "Mur extérieur standard" : "Mur intérieur standard",
   layers: type === "external" ? externalWallLayers() : internalWallLayers(),
 });
@@ -31,7 +31,7 @@ export const initialWallDefaults = (): WallDefaults => ({
   internal: standardTemplate("internal"),
 });
 
-const normalizeTemplate = (value: unknown, type: WallType): WallDefaultTemplate => {
+const normalizeTemplate = (value: unknown, type: PhysicalWallType): WallDefaultTemplate => {
   if (!value || typeof value !== "object") return standardTemplate(type);
   const source = value as Partial<WallDefaultTemplate>;
   const layers = Array.isArray(source.layers) && source.layers.length
@@ -76,10 +76,10 @@ export const wallTemplateFromWall = (wall: Wall): WallDefaultTemplate => ({
   layers: cloneLayers(wall.layers),
 });
 
-export const wallTemplateLayers = (defaults: WallDefaults, type: WallType) =>
+export const wallTemplateLayers = (defaults: WallDefaults, type: PhysicalWallType) =>
   cloneLayers(defaults[type].layers);
 
-export const resetWallTemplate = (type: WallType) => standardTemplate(type);
+export const resetWallTemplate = (type: PhysicalWallType) => standardTemplate(type);
 
 export const wallTemplateThickness = (template: WallDefaultTemplate) =>
   template.layers.reduce((sum, layer) => sum + layer.thicknessMm, 0);
