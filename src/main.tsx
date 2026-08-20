@@ -3,6 +3,15 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 
+declare global {
+  interface Window {
+    __donutBootstrap?: {
+      ready: () => void;
+      fail: (reason: unknown) => void;
+    };
+  }
+}
+
 type ErrorBoundaryProps = { children: ReactNode };
 type ErrorBoundaryState = { error: string | null };
 
@@ -58,6 +67,8 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Élément #root introuvable dans index.html");
 }
+
+window.__donutBootstrap?.ready();
 
 createRoot(rootElement).render(
   <StrictMode>
