@@ -8,6 +8,7 @@ on:
       - recover/work-advanced
       - feature/direct-wall-editing
       - feature/level-vertical-structure
+      - feature/persistent-spaces
   workflow_dispatch:
 
 permissions:
