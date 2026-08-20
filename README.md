@@ -31,3 +31,5 @@ npm run build
 ## Périmètre actuel
 
 Cette version traite uniquement les murs. Les ouvertures, planchers, toitures, zones thermiques, scénarios d'usage et calculs dynamiques seront ajoutés dans de futures étapes.
+
+<!-- deployment trigger: 2026-08-20T12:02Z -->
