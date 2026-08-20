@@ -1,4 +1,5 @@
 import { normalizeProfile, wallLength, type SurfaceAssembly, type Wall, type WallLayer } from "./model";
+import { openingsTransmission, wallOpeningsArea } from "./openings";
 import { wallInclinationSurfaceFactor } from "./wallInclination";
 
 const INTERNAL_SURFACE_RESISTANCE = 0.13;
@@ -36,8 +37,21 @@ export const wallProjectedArea = (wall: Wall) => {
   return area;
 };
 
+/** Gross wall area before subtracting windows and doors. */
 export const wallArea = (wall: Wall) =>
   wall.type === "virtual" ? 0 : wallProjectedArea(wall) * wallInclinationSurfaceFactor(wall);
+
+/** Net opaque wall area after subtracting openings. */
+export const wallOpaqueArea = (wall: Wall) =>
+  wall.type === "virtual" ? 0 : Math.max(0, wallArea(wall) - wallOpeningsArea(wall));
+
+/** Total opening area attached to the wall, capped by the gross wall area for summaries. */
+export const wallOpeningArea = (wall: Wall) =>
+  wall.type === "virtual" ? 0 : Math.min(wallArea(wall), wallOpeningsArea(wall));
+
+/** Transmission heat-loss coefficient H for the wall assembly + its openings, in W/K. */
+export const wallTransmissionCoefficient = (wall: Wall) =>
+  wall.type === "virtual" ? 0 : wallOpaqueArea(wall) * wallUValue(wall) + openingsTransmission(wall);
 
 export const assemblyResistance = (assembly: SurfaceAssembly) =>
   HORIZONTAL_INTERNAL_RESISTANCE + EXTERNAL_SURFACE_RESISTANCE + layersResistance(assembly.layers);
@@ -55,5 +69,11 @@ export const projectPerimeter = (walls: Wall[]) =>
 export const projectWallArea = (walls: Wall[]) =>
   walls.filter((wall) => wall.type !== "virtual").reduce((total, wall) => total + wallArea(wall), 0);
 
+export const projectOpaqueWallArea = (walls: Wall[]) =>
+  walls.filter((wall) => wall.type !== "virtual").reduce((total, wall) => total + wallOpaqueArea(wall), 0);
+
 export const projectExternalWallArea = (walls: Wall[]) =>
   walls.filter((wall) => wall.type === "external").reduce((total, wall) => total + wallArea(wall), 0);
+
+export const projectExternalOpaqueWallArea = (walls: Wall[]) =>
+  walls.filter((wall) => wall.type === "external").reduce((total, wall) => total + wallOpaqueArea(wall), 0);
