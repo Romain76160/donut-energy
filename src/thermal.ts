@@ -9,7 +9,7 @@ export const layerResistance = (layer: WallLayer) =>
   layer.conductivity > 0 ? layer.thicknessMm / 1000 / layer.conductivity : 0;
 
 export const layersResistance = (layers: WallLayer[]) =>
-  layers.reduce((total, layer) => total + layerResistance(layer), 0;
+  layers.reduce((total, layer) => total + layerResistance(layer), 0);
 
 export const wallResistance = (wall: Wall) =>
   INTERNAL_SURFACE_RESISTANCE +
