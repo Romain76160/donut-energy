@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { LevelCreationPanel, type NewLevelDefinition } from "./components/LevelCreationPanel";
 import { LevelInspector } from "./components/LevelInspector";
 import { ModelSidebar } from "./components/ModelSidebar";
 import { PlanCanvas } from "./components/PlanCanvas";
@@ -36,7 +37,7 @@ import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaul
 
 type History = { past: Project[]; present: Project; future: Project[] };
 type SurfaceKey = "floor" | "ceiling";
-type InspectorView = "context" | "defaults";
+type InspectorView = "context" | "defaults" | "create-level";
 
 const loadProject = () => {
   try {
@@ -299,11 +300,18 @@ function App() {
     setMode("select");
   };
 
-  const addLevel = () => {
-    const index = project.levels.length + 1;
-    const highest = [...project.levels].sort((a, b) => b.elevation - a.elevation)[0];
-    const elevation = highest ? highest.elevation + highest.defaultHeight + 0.2 : 0;
-    const level = createLevel(translations[language].newLevel(index), elevation, false);
+  const openLevelCreator = () => {
+    setSelectedWallId(null);
+    setInspectorView("create-level");
+    setMode("select");
+    setDraftStart(null);
+  };
+
+  const createConfiguredLevel = (definition: NewLevelDefinition) => {
+    const level = createLevel(definition.name, definition.elevation, false, {
+      ceilingElevation: definition.ceilingElevation,
+      openToBelow: definition.openToBelow,
+    });
     commit((current) => ({ ...current, levels: [...current.levels, level] }));
     setActiveLevelId(level.id);
     setSelectedWallId(null);
@@ -443,7 +451,7 @@ function App() {
           onSelectWall={(id) => { setSelectedWallId(id); setInspectorView("context"); setMode("select"); setDraftStart(null); }}
           onOpenWallDefaults={openWallDefaults}
           onSelectLevel={selectLevel}
-          onAddLevel={addLevel}
+          onAddLevel={openLevelCreator}
           onDrawLengthChange={setDrawLength}
           onDrawAngleChange={setDrawAngle}
           onCreateVector={createVectorSegment}
@@ -460,12 +468,19 @@ function App() {
           northAngle={northAngle}
           language={language}
           onSelectWall={(id) => { setSelectedWallId(id); setInspectorView("context"); }}
-          onClearSelection={() => { if (inspectorView !== "defaults") setSelectedWallId(null); }}
+          onClearSelection={() => { if (inspectorView === "context") setSelectedWallId(null); }}
           onCanvasPoint={handleCanvasPoint}
           onZoomChange={setZoom}
           onNorthAngleChange={setNorthAngle}
         />
-        {inspectorView === "defaults" ? (
+        {inspectorView === "create-level" ? (
+          <LevelCreationPanel
+            levels={project.levels}
+            language={language}
+            onCreate={createConfiguredLevel}
+            onCancel={() => setInspectorView("context")}
+          />
+        ) : inspectorView === "defaults" ? (
           <WallDefaultsInspector
             walls={allWalls}
             defaults={wallDefaults}
