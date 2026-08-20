@@ -1,4 +1,4 @@
-import { detectRooms, type DetectedRoom } from "./geometry";
+import { detectRooms, type Room as DetectedRoom } from "./geometry";
 import { createId, levelClearHeight, type Level, type Point, type Project, type Space } from "./model";
 
 const SAMPLE_STEPS = 24;
