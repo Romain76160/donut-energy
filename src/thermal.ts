@@ -11,17 +11,21 @@ export const layerResistance = (layer: WallLayer) =>
 export const layersResistance = (layers: WallLayer[]) =>
   layers.reduce((total, layer) => total + layerResistance(layer), 0);
 
-export const wallResistance = (wall: Wall) =>
-  INTERNAL_SURFACE_RESISTANCE +
-  (wall.type === "internal" ? INTERNAL_SURFACE_RESISTANCE : EXTERNAL_SURFACE_RESISTANCE) +
-  layersResistance(wall.layers);
+export const wallResistance = (wall: Wall) => {
+  if (wall.type === "virtual") return 0;
+  return INTERNAL_SURFACE_RESISTANCE +
+    (wall.type === "internal" ? INTERNAL_SURFACE_RESISTANCE : EXTERNAL_SURFACE_RESISTANCE) +
+    layersResistance(wall.layers);
+};
 
 export const wallUValue = (wall: Wall) => {
+  if (wall.type === "virtual") return 0;
   const resistance = wallResistance(wall);
   return resistance > 0 ? 1 / resistance : 0;
 };
 
 export const wallProjectedArea = (wall: Wall) => {
+  if (wall.type === "virtual") return 0;
   const profile = normalizeProfile(wall);
   let area = 0;
   for (let index = 0; index < profile.length - 1; index += 1) {
@@ -32,7 +36,8 @@ export const wallProjectedArea = (wall: Wall) => {
   return area;
 };
 
-export const wallArea = (wall: Wall) => wallProjectedArea(wall) * wallInclinationSurfaceFactor(wall);
+export const wallArea = (wall: Wall) =>
+  wall.type === "virtual" ? 0 : wallProjectedArea(wall) * wallInclinationSurfaceFactor(wall);
 
 export const assemblyResistance = (assembly: SurfaceAssembly) =>
   HORIZONTAL_INTERNAL_RESISTANCE + EXTERNAL_SURFACE_RESISTANCE + layersResistance(assembly.layers);
@@ -48,7 +53,7 @@ export const projectPerimeter = (walls: Wall[]) =>
     .reduce((total, wall) => total + wallLength(wall), 0);
 
 export const projectWallArea = (walls: Wall[]) =>
-  walls.reduce((total, wall) => total + wallArea(wall), 0);
+  walls.filter((wall) => wall.type !== "virtual").reduce((total, wall) => total + wallArea(wall), 0);
 
 export const projectExternalWallArea = (walls: Wall[]) =>
   walls.filter((wall) => wall.type === "external").reduce((total, wall) => total + wallArea(wall), 0);
