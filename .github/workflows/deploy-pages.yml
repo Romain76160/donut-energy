@@ -6,6 +6,7 @@ on:
       - main
       - agent/fr-en-language-toggle
       - recover/work-advanced
+      - feature/direct-wall-editing
   workflow_dispatch:
 
 permissions:
