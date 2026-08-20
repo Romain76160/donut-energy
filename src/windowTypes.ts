@@ -1,6 +1,7 @@
 import type { Language } from "./i18n";
-import { createId, type WallOpening } from "./model";
-import { DEFAULT_FRAME_DEPTH_MM, type OpeningDepthMode } from "./openingDepth";
+import { createId, type Project, type Wall, type WallOpening } from "./model";
+import { normalizeOpening } from "./openings";
+import { DEFAULT_FRAME_DEPTH_MM, type OpeningDepthMode, writeOpeningDepth } from "./openingDepth";
 
 export type WindowOperation = "fixed" | "casement-1" | "casement-2" | "tilt-turn" | "sliding";
 
@@ -20,6 +21,10 @@ export type WindowTypeDefinition = {
 };
 
 const STORAGE_KEY = "donut-energy-window-types";
+const LINKS_STORAGE_KEY = "donut-energy-window-type-links";
+export const WINDOW_TYPES_CHANGE_EVENT = "donut-energy-window-types-change";
+
+type WindowTypeLinks = Record<string, string>;
 
 const BUILT_IN_TYPES: WindowTypeDefinition[] = [
   {
@@ -108,30 +113,90 @@ export const normalizeWindowType = (value: Partial<WindowTypeDefinition>, index 
 
 export const builtInWindowTypes = () => BUILT_IN_TYPES.map((type) => ({ ...type }));
 
-export const loadWindowTypes = (): WindowTypeDefinition[] => {
-  if (typeof localStorage === "undefined") return builtInWindowTypes();
+const loadStoredCustomWindowTypes = (): WindowTypeDefinition[] => {
+  if (typeof localStorage === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return builtInWindowTypes();
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return builtInWindowTypes();
-    const custom = parsed
+    if (!Array.isArray(parsed)) return [];
+    return parsed
       .map((item, index) => item && typeof item === "object" ? normalizeWindowType(item as Partial<WindowTypeDefinition>, index) : null)
       .filter((item): item is WindowTypeDefinition => Boolean(item))
       .map((item) => ({ ...item, builtIn: false }));
-    return [...builtInWindowTypes(), ...custom];
   } catch {
-    return builtInWindowTypes();
+    return [];
   }
 };
 
-export const saveWindowTypes = (types: WindowTypeDefinition[]) => {
+export const loadWindowTypes = (): WindowTypeDefinition[] => [
+  ...builtInWindowTypes(),
+  ...loadStoredCustomWindowTypes(),
+];
+
+const readWindowTypeLinks = (): WindowTypeLinks => {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(LINKS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed as WindowTypeLinks : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveWindowTypeLinks = (links: WindowTypeLinks) => {
   if (typeof localStorage === "undefined") return;
   try {
-    const custom = types.filter((type) => !type.builtIn).map((type, index) => ({ ...normalizeWindowType(type, index), builtIn: undefined }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(custom));
+    localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
   } catch {
-    // The type library remains usable for the current session if storage is unavailable.
+    // Links remain usable for the current session when storage is unavailable.
+  }
+};
+
+const windowTypeLinkKey = (wallId: string, openingId: string) => `${wallId}:${openingId}`;
+
+export const readWindowTypeLink = (wallId: string, openingId: string) =>
+  readWindowTypeLinks()[windowTypeLinkKey(wallId, openingId)] ?? null;
+
+export const linkWindowType = (wallId: string, openingId: string, typeId: string) => {
+  const links = readWindowTypeLinks();
+  links[windowTypeLinkKey(wallId, openingId)] = typeId;
+  saveWindowTypeLinks(links);
+};
+
+export const unlinkWindowType = (wallId: string, openingId: string) => {
+  const links = readWindowTypeLinks();
+  delete links[windowTypeLinkKey(wallId, openingId)];
+  saveWindowTypeLinks(links);
+};
+
+const purgeWindowTypeLinks = (typeIds: Set<string>) => {
+  if (!typeIds.size) return;
+  const links = readWindowTypeLinks();
+  let changed = false;
+  Object.entries(links).forEach(([key, typeId]) => {
+    if (!typeIds.has(typeId)) return;
+    delete links[key];
+    changed = true;
+  });
+  if (changed) saveWindowTypeLinks(links);
+};
+
+export const saveWindowTypes = (types: WindowTypeDefinition[]) => {
+  const previousCustomIds = new Set(loadStoredCustomWindowTypes().map((type) => type.id));
+  const custom = types.filter((type) => !type.builtIn).map((type, index) => ({ ...normalizeWindowType(type, index), builtIn: undefined }));
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(custom));
+    } catch {
+      // The type library remains usable for the current session if storage is unavailable.
+    }
+  }
+  const nextCustomIds = new Set(custom.map((type) => type.id));
+  purgeWindowTypeLinks(new Set([...previousCustomIds].filter((id) => !nextCustomIds.has(id))));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(WINDOW_TYPES_CHANGE_EVENT, { detail: { types } }));
   }
 };
 
@@ -186,3 +251,56 @@ export const applyWindowTypeToOpening = (opening: WallOpening, type: WindowTypeD
   uValue: type.uValue,
   solarFactor: type.solarFactor,
 });
+
+export const syncWallWindowTypeInstances = (wall: Wall, types: WindowTypeDefinition[]): Wall => {
+  if (!wall.openings?.length) return wall;
+  const byId = new Map(types.map((type) => [type.id, type]));
+  let changed = false;
+  const openings = wall.openings.map((opening) => {
+    const typeId = readWindowTypeLink(wall.id, opening.id);
+    const type = typeId ? byId.get(typeId) : undefined;
+    if (!type || opening.type !== "window") return opening;
+    const next = normalizeOpening(applyWindowTypeToOpening(opening, type), wall);
+    if (
+      next.width === opening.width &&
+      next.height === opening.height &&
+      next.sillHeight === opening.sillHeight &&
+      next.uValue === opening.uValue &&
+      next.solarFactor === opening.solarFactor
+    ) return opening;
+    changed = true;
+    return next;
+  });
+  return changed ? { ...wall, openings } : wall;
+};
+
+export const syncProjectWindowTypeInstances = (project: Project, types: WindowTypeDefinition[]): Project => {
+  let changed = false;
+  const levels = project.levels.map((level) => {
+    let levelChanged = false;
+    const walls = level.walls.map((wall) => {
+      const next = syncWallWindowTypeInstances(wall, types);
+      if (next !== wall) levelChanged = true;
+      return next;
+    });
+    if (!levelChanged) return level;
+    changed = true;
+    return { ...level, walls };
+  });
+  return changed ? { ...project, levels } : project;
+};
+
+export const syncWindowTypeDepths = (project: Project, types: WindowTypeDefinition[]) => {
+  const byId = new Map(types.map((type) => [type.id, type]));
+  project.levels.forEach((level) => {
+    level.walls.forEach((wall) => {
+      wall.openings?.forEach((opening) => {
+        if (opening.type !== "window") return;
+        const typeId = readWindowTypeLink(wall.id, opening.id);
+        const type = typeId ? byId.get(typeId) : undefined;
+        if (!type) return;
+        writeOpeningDepth(wall, opening.id, { mode: type.depthMode, frameDepthMm: type.frameDepthMm });
+      });
+    });
+  });
+};

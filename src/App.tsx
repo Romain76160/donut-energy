@@ -37,19 +37,38 @@ import {
 } from "./model";
 import { syncProjectSpaces } from "./spaces";
 import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaults } from "./wallDefaults";
+import {
+  loadWallTypes,
+  syncProjectWallTypeInstances,
+  WALL_TYPES_CHANGE_EVENT,
+  type WallTypeDefinition,
+} from "./wallTypes";
+import {
+  loadWindowTypes,
+  syncProjectWindowTypeInstances,
+  syncWindowTypeDepths,
+  WINDOW_TYPES_CHANGE_EVENT,
+  type WindowTypeDefinition,
+} from "./windowTypes";
 
 type History = { past: Project[]; present: Project; future: Project[] };
 type SurfaceKey = "floor" | "ceiling";
 type InspectorView = "context" | "defaults" | "create-level";
 
+const syncProjectLinkedTypes = (
+  project: Project,
+  wallTypes = loadWallTypes(),
+  windowTypes = loadWindowTypes(),
+) => syncProjectWindowTypeInstances(syncProjectWallTypeInstances(project, wallTypes), windowTypes);
+
 const loadProject = () => {
   try {
     const saved = localStorage.getItem("donut-energy-project");
-    if (saved) return syncProjectSpaces(migrateProject(JSON.parse(saved)));
+    if (saved) return syncProjectSpaces(syncProjectLinkedTypes(migrateProject(JSON.parse(saved))));
   } catch {
     // A malformed or outdated local save must never prevent the editor from opening.
   }
-  return syncProjectSpaces(initialProject());
+  return syncProjectSpaces(syncProjectLinkedTypes(initialProject()));
 };
 
 const loadLanguage = (): Language => {
@@ -165,7 +184,7 @@ function App() {
     setHistory((current) => {
       const rawNext = update(current.present);
       if (rawNext === current.present) return current;
-      const next = syncProjectSpaces(rawNext);
+      const next = syncProjectSpaces(syncProjectLinkedTypes(rawNext));
       return {
         past: [...current.past.slice(-49), current.present],
         present: next,
@@ -173,6 +192,41 @@ function App() {
       };
     });
   };
+
+  useEffect(() => {
+    const handleWindowTypesChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ types?: WindowTypeDefinition[] }>).detail;
+      const types = Array.isArray(detail?.types) ? detail.types : loadWindowTypes();
+      setSaved(false);
+      setHistory((current) => {
+        const next = syncProjectSpaces(syncProjectWindowTypeInstances(current.present, types));
+        syncWindowTypeDepths(next, types);
+        if (next === current.present) return current;
+        return { past: [...current.past.slice(-49), current.present], present: next, future: [] };
+      });
+    };
+    window.addEventListener(WINDOW_TYPES_CHANGE_EVENT, handleWindowTypesChange);
+    return () => window.removeEventListener(WINDOW_TYPES_CHANGE_EVENT, handleWindowTypesChange);
+  }, []);
+
+  useEffect(() => {
+    const handleWallTypesChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ types?: WallTypeDefinition[] }>).detail;
+      const types = Array.isArray(detail?.types) ? detail.types : loadWallTypes();
+      setSaved(false);
+      setHistory((current) => {
+        const next = syncProjectSpaces(syncProjectWallTypeInstances(current.present, types));
+        if (next === current.present) return current;
+        return { past: [...current.past.slice(-49), current.present], present: next, future: [] };
+      });
+    };
+    window.addEventListener(WALL_TYPES_CHANGE_EVENT, handleWallTypesChange);
+    return () => window.removeEventListener(WALL_TYPES_CHANGE_EVENT, handleWallTypesChange);
+  }, []);
+
+  useEffect(() => {
+    syncWindowTypeDepths(project, loadWindowTypes());
+  }, []);
 
   const commitActiveLevel = (update: (level: Level) => Level) => {
     if (!activeLevel) return;
