@@ -4,6 +4,7 @@ import { snapPoint, wallOrientationFromNorth, type Room } from "../geometry";
 import { localeFor, orientationLabel, translations, type Language } from "../i18n";
 import { formatNumber, wallLength, type EditorMode, type Point, type Wall } from "../model";
 import "../north-control.css";
+import "../virtual-walls.css";
 
 const VIEW_WIDTH = 900;
 const VIEW_HEIGHT = 680;
@@ -27,8 +28,9 @@ type Props = {
   onNorthAngleChange: (angle: number) => void;
 };
 
-const isDrawing = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal";
+const isDrawing = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
 const normalizeNorthAngle = (value: number) => ((value % 360) + 360) % 360;
+const previewType = (mode: EditorMode) => mode === "draw-internal" ? "internal" : mode === "draw-virtual" ? "virtual" : "external";
 
 export function PlanCanvas({
   walls,
@@ -96,7 +98,7 @@ export function PlanCanvas({
       <div className="canvas-heading">
         <div>
           <h1>{text.planTitle}</h1>
-          {isDrawing(mode) ? <p>{text.drawHint}</p> : null}
+          {isDrawing(mode) ? <p>{mode === "draw-virtual" ? (language === "fr" ? "Tracez une limite virtuelle pour séparer les pièces sans créer de paroi physique." : "Draw a virtual boundary to separate rooms without creating a physical wall.") : text.drawHint}</p> : null}
           {mode === "node" ? <p>{text.nodeHint}</p> : null}
         </div>
         <div className="north-control">
@@ -225,14 +227,14 @@ export function PlanCanvas({
               <circle className="wall-node" cx={start.x} cy={start.y} r="7" />
               <circle className="wall-node" cx={end.x} cy={end.y} r="7" />
               <text x={midX + (horizontal ? 0 : 25)} y={midY + (horizontal ? -20 : 4)} textAnchor="middle">
-                {formatNumber(wallLength(wall), 2, locale)} m{automaticOrientation ? ` · ${orientationLabel(automaticOrientation, language)}` : ""}
+                {formatNumber(wallLength(wall), 2, locale)} m{automaticOrientation ? ` · ${orientationLabel(automaticOrientation, language)}` : wall.type === "virtual" ? ` · ${language === "fr" ? "virtuel" : "virtual"}` : ""}
               </text>
             </g>
           );
         })}
 
         {preview ? (
-          <g className={`wall-preview ${mode === "draw-internal" ? "internal" : "external"}`}>
+          <g className={`wall-preview ${previewType(mode)}`}>
             <line x1={preview.start.x} y1={preview.start.y} x2={preview.end.x} y2={preview.end.y} />
             <circle cx={preview.start.x} cy={preview.start.y} r="8" />
             <circle cx={preview.end.x} cy={preview.end.y} r="8" />
