@@ -9,6 +9,9 @@ on:
       - feature/direct-wall-editing
       - feature/level-vertical-structure
       - feature/persistent-spaces
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
