@@ -1,0 +1,197 @@
+.wall-defaults-inspector {
+  display: block;
+}
+
+.wall-defaults-intro {
+  margin: -4px 0 16px;
+  color: #748195;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.wall-default-card {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e0e6ec;
+  border-radius: 9px;
+  background: #fbfcfd;
+}
+
+.wall-default-card.external {
+  box-shadow: inset 3px 0 0 #365d88;
+}
+
+.wall-default-card.internal {
+  box-shadow: inset 3px 0 0 #8794a5;
+}
+
+.wall-default-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wall-default-heading h3 {
+  margin: 0 0 4px;
+  color: #2e425c;
+  font-size: 12px;
+}
+
+.wall-default-heading p {
+  margin: 0;
+  color: #7b8796;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.wall-default-type-badge {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #eef3f7;
+  color: #53687e;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.wall-default-select {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.wall-default-select > span {
+  color: #667487;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.wall-default-select select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid #d7dfe6;
+  border-radius: 6px;
+  background: white;
+  color: #2c4059;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.wall-default-empty {
+  margin: 8px 0 0;
+  color: #8a96a4;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.wall-default-current {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #e7ebef;
+}
+
+.wall-default-current-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.wall-default-current-title strong {
+  color: #314760;
+  font-size: 10px;
+}
+
+.wall-default-current-title button {
+  border: 0;
+  background: transparent;
+  color: #8a5e49;
+  padding: 2px 0;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.wall-default-layers {
+  display: grid;
+  gap: 4px;
+}
+
+.wall-default-layer {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 27px;
+  padding: 4px 7px;
+  border: 1px solid #e7ebef;
+  border-radius: 5px;
+  background: white;
+  color: #56677a;
+  font-size: 9px;
+}
+
+.wall-default-layer > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wall-default-layer strong {
+  color: #374d67;
+  font-size: 9px;
+}
+
+.wall-default-swatch {
+  width: 8px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+.wall-default-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 7px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  background: #f0f4f8;
+  color: #617085;
+  font-size: 9px;
+}
+
+.wall-default-total strong {
+  color: #2e455f;
+}
+
+.default-walls-button {
+  width: 100%;
+  min-height: 37px;
+  margin-top: 8px;
+  border: 1px solid #d7e0e8;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #3e566f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.default-walls-button:hover,
+.default-walls-button.active {
+  border-color: #aebed0;
+  background: #edf3f8;
+  color: #203c5b;
+}
+
+.default-walls-button svg {
+  width: 16px;
+  height: 16px;
+}
