@@ -20,6 +20,12 @@ export type ProfilePoint = {
   height: number;
 };
 
+export type SectionPoint = {
+  id: string;
+  height: number;
+  offset: number;
+};
+
 export type Wall = {
   id: string;
   name: string;
@@ -30,6 +36,8 @@ export type Wall = {
   type: WallType;
   layers: WallLayer[];
   profile: ProfilePoint[];
+  inclinationDeg?: number;
+  sectionProfile?: SectionPoint[];
 };
 
 export type SurfaceAssembly = {
@@ -197,6 +205,12 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
   const height = Number.isFinite(source.height) ? Math.max(0.5, Number(source.height)) : defaultHeight;
   const length = Math.hypot(source.end.x - source.start.x, source.end.y - source.start.y);
   const type: WallType = source.type === "internal" ? "internal" : "external";
+  const inclinationDeg = Number.isFinite(source.inclinationDeg) ? Number(source.inclinationDeg) : undefined;
+  const sectionProfile = Array.isArray(source.sectionProfile) && source.sectionProfile.length >= 2
+    ? source.sectionProfile
+      .map((point) => ({ id: point.id || createId(), height: Number(point.height), offset: Number(point.offset) }))
+      .filter((point) => Number.isFinite(point.height) && Number.isFinite(point.offset))
+    : undefined;
   return {
     id: typeof source.id === "string" ? source.id : createId(),
     name: typeof source.name === "string" ? source.name : `Mur ${fallbackIndex + 1}`,
@@ -207,6 +221,8 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
     type,
     layers: Array.isArray(source.layers) && source.layers.length ? source.layers.map((layer) => ({ ...layer, id: layer.id || createId() })) : (type === "external" ? externalWallLayers() : internalWallLayers()),
     profile: Array.isArray(source.profile) && source.profile.length >= 2 ? source.profile.map((point) => ({ ...point, id: point.id || createId() })) : rectangleProfile(length, height),
+    inclinationDeg,
+    sectionProfile,
   };
 };
 
