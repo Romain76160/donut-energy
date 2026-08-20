@@ -1,0 +1,243 @@
+.wall-shape-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 23, 40, .48);
+  backdrop-filter: blur(4px);
+}
+
+.wall-shape-dialog {
+  width: min(860px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  border: 1px solid #dfe5eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(10, 23, 40, .24);
+}
+
+.wall-shape-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.wall-shape-dialog-header h2 {
+  margin: 0;
+  color: #17283d;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.wall-shape-dialog-header p {
+  margin: 5px 0 0;
+  color: #7a8797;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.wall-shape-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid #dce3e9;
+  border-radius: 8px;
+  background: #fff;
+  color: #52647a;
+  display: grid;
+  place-items: center;
+}
+
+.wall-shape-close:hover {
+  background: #f4f7f9;
+}
+
+.wall-shape-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.wall-shape-search-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 22px;
+  background: #fafcfd;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.wall-shape-search {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid #d9e1e8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.wall-shape-search:focus-within {
+  border-color: #7f9bb9;
+  box-shadow: 0 0 0 2px rgba(71, 120, 184, .1);
+}
+
+.wall-shape-search svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: #718095;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.wall-shape-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #26394f;
+  font-size: 12px;
+}
+
+.wall-shape-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wall-shape-categories button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #dce3e9;
+  border-radius: 999px;
+  background: #fff;
+  color: #5b6d82;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.wall-shape-categories button.active {
+  border-color: #efb48d;
+  background: #fff3ea;
+  color: #a94d17;
+}
+
+.wall-shape-results {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 22px 22px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px;
+}
+
+.wall-shape-card {
+  min-width: 0;
+  min-height: 154px;
+  padding: 10px;
+  border: 1px solid #dfe5eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #3e526b;
+  display: grid;
+  grid-template-rows: 76px auto;
+  gap: 8px;
+  text-align: left;
+}
+
+.wall-shape-card:hover {
+  border-color: #efb48d;
+  background: #fff8f3;
+  color: #a64c18;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(19, 37, 63, .08);
+}
+
+.wall-shape-card svg {
+  width: 100%;
+  height: 76px;
+}
+
+.shape-card-ground {
+  stroke: #c7d0d9;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.shape-card-fill {
+  fill: #edf3f8;
+}
+
+.shape-card-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wall-shape-card > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.wall-shape-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.wall-shape-card small {
+  color: #7f8b99;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.wall-shape-empty {
+  grid-column: 1 / -1;
+  padding: 36px 12px;
+  color: #7b8796;
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .wall-shape-dialog-backdrop {
+    padding: 8px;
+    align-items: end;
+  }
+
+  .wall-shape-dialog {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .wall-shape-dialog-header,
+  .wall-shape-search-row,
+  .wall-shape-results {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .wall-shape-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
