@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { PlusIcon, TrashIcon } from "../icons";
 import { localeFor, type Language } from "../i18n";
+import { OPENING_PLAN_MOVE_EVENT, type OpeningPlanMoveDetail } from "../openingEditing";
 import { formatNumber, wallLength, type OpeningType, type Wall, type WallOpening } from "../model";
 import { defaultOpening, normalizeOpening, openingArea, openingTypeLabel, wallOpenings } from "../openings";
 import "../openings.css";
+import { OpeningElevationEditor } from "./OpeningElevationEditor";
 
 type Props = {
   wall: Wall;
@@ -16,7 +19,7 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
   const length = wallLength(wall);
   const labels = language === "fr" ? {
     title: "OUVERTURES",
-    help: "Les ouvertures sont positionnées le long du mur. Leur surface est retranchée de la surface opaque.",
+    help: "Glissez les ouvertures directement sur le plan ou dans l’élévation. Les champs restent disponibles pour un réglage précis.",
     addWindow: "Fenêtre",
     addDoor: "Porte",
     addGlazedDoor: "Baie vitrée",
@@ -33,7 +36,7 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     delete: "Supprimer l’ouverture",
   } : {
     title: "OPENINGS",
-    help: "Openings are positioned along the wall. Their area is subtracted from the opaque wall area.",
+    help: "Drag openings directly on the plan or in the elevation. Numeric fields remain available for precise adjustment.",
     addWindow: "Window",
     addDoor: "Door",
     addGlazedDoor: "Glazed door",
@@ -52,9 +55,20 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
 
   const emit = (next: WallOpening[]) => onChange(next.map((opening) => normalizeOpening(opening, wall)));
 
+  useEffect(() => {
+    const handlePlanMove = (event: Event) => {
+      const detail = (event as CustomEvent<OpeningPlanMoveDetail>).detail;
+      if (!detail || detail.wallId !== wall.id) return;
+      const current = wallOpenings(wall);
+      if (!current.some((opening) => opening.id === detail.openingId)) return;
+      emit(current.map((opening) => opening.id === detail.openingId ? { ...opening, position: detail.position } : opening));
+    };
+    window.addEventListener(OPENING_PLAN_MOVE_EVENT, handlePlanMove);
+    return () => window.removeEventListener(OPENING_PLAN_MOVE_EVENT, handlePlanMove);
+  }, [wall, onChange]);
+
   const addOpening = (type: OpeningType) => {
     const next = defaultOpening(type, wall, openings.length);
-    // Stagger successive openings so they do not all start at the exact same centre.
     if (openings.length > 0 && length > next.width) {
       const candidate = (length * (openings.length + 1)) / (openings.length + 2);
       next.position = Math.max(next.width / 2, Math.min(length - next.width / 2, candidate));
@@ -84,7 +98,9 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
         <button type="button" onClick={() => addOpening("glazed-door")}><PlusIcon /> {labels.addGlazedDoor}</button>
       </div>
 
-      {openings.length === 0 ? <div className="opening-empty">{labels.none}</div> : null}
+      {openings.length > 0 ? (
+        <OpeningElevationEditor wall={wall} openings={openings} language={language} onChange={emit} />
+      ) : <div className="opening-empty">{labels.none}</div>}
 
       <div className="opening-list">
         {openings.map((opening, index) => (
