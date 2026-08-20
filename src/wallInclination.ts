@@ -1,4 +1,4 @@
-import type { Wall } from "./model";
+import { createId, type SectionPoint, type Wall } from "./model";
 
 export type InclinedWall = Wall & { inclinationDeg?: number };
 
@@ -45,17 +45,12 @@ export const persistWallInclination = (wallId: string, value: number) => {
 };
 
 export const wallInclinationDeg = (wall: Wall) => {
-  const explicit = Number((wall as InclinedWall).inclinationDeg);
+  const explicit = Number(wall.inclinationDeg);
   if (Number.isFinite(explicit)) return clampWallInclination(explicit);
   return storedWallInclination(wall.id) ?? DEFAULT_WALL_INCLINATION;
 };
 
 export const wallInclinationRadians = (wall: Wall) => wallInclinationDeg(wall) * Math.PI / 180;
-
-export const wallInclinationSurfaceFactor = (wall: Wall) => {
-  const sine = Math.abs(Math.sin(wallInclinationRadians(wall)));
-  return sine > 0.01 ? 1 / sine : 1;
-};
 
 export const wallTrueHeight = (verticalHeight: number, inclinationDeg: number) => {
   const radians = clampWallInclination(inclinationDeg) * Math.PI / 180;
@@ -68,6 +63,60 @@ export const wallTopOffset = (verticalHeight: number, inclinationDeg: number) =>
   const tangent = Math.tan(radians);
   return Math.abs(tangent) > 0.01 ? verticalHeight / tangent : 0;
 };
+
+export const inclinationFromTopOffset = (verticalHeight: number, offset: number) => {
+  if (!Number.isFinite(offset) || Math.abs(offset) < 0.0001) return DEFAULT_WALL_INCLINATION;
+  const angle = Math.atan2(Math.max(0.1, verticalHeight), offset) * 180 / Math.PI;
+  return clampWallInclination(angle);
+};
+
+export const normalizeWallSectionProfile = (wall: Wall): SectionPoint[] => {
+  const height = Math.max(0.1, wall.height);
+  const source = Array.isArray(wall.sectionProfile)
+    ? wall.sectionProfile
+      .map((point) => ({
+        ...point,
+        id: point.id || createId(),
+        height: Number(point.height),
+        offset: Number(point.offset),
+      }))
+      .filter((point) => Number.isFinite(point.height) && Number.isFinite(point.offset))
+      .sort((a, b) => a.height - b.height)
+    : [];
+
+  if (source.length < 2) {
+    return [
+      { id: createId(), height: 0, offset: 0 },
+      { id: createId(), height, offset: wallTopOffset(height, wallInclinationDeg(wall)) },
+    ];
+  }
+
+  const first = { ...source[0], height: 0, offset: 0 };
+  const last = { ...source.at(-1)!, height };
+  const middle = source.slice(1, -1).map((point) => ({
+    ...point,
+    height: Math.min(height - 0.01, Math.max(0.01, point.height)),
+  }));
+  return [first, ...middle, last].sort((a, b) => a.height - b.height);
+};
+
+export const wallSectionTrueHeight = (wall: Wall) => {
+  const points = normalizeWallSectionProfile(wall);
+  let total = 0;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    total += Math.hypot(next.height - current.height, next.offset - current.offset);
+  }
+  return total;
+};
+
+export const wallInclinationSurfaceFactor = (wall: Wall) => {
+  const verticalHeight = Math.max(0.1, wall.height);
+  return wallSectionTrueHeight(wall) / verticalHeight;
+};
+
+export const wallSectionTopOffset = (wall: Wall) => normalizeWallSectionProfile(wall).at(-1)?.offset ?? 0;
 
 export const wallTotalThickness = (wall: Wall) =>
   wall.layers.reduce((total, layer) => total + layer.thicknessMm / 1000, 0);
