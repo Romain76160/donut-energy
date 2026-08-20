@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Language } from "../i18n";
 import { openingDepthModeLabel } from "../openingDepth";
 import {
@@ -10,6 +10,7 @@ import {
   type WindowTypeDefinition,
 } from "../windowTypes";
 import "../window-types.css";
+import "../linked-types.css";
 
 const OPERATIONS: WindowOperation[] = ["fixed", "casement-1", "casement-2", "tilt-turn", "sliding"];
 
@@ -122,7 +123,6 @@ export function WindowTypeLibrary({ types, language, onChange }: LibraryProps) {
   };
 
   const remove = (id: string) => onChange(types.filter((type) => type.id !== id || type.builtIn));
-
   const glazingArea = windowTypeGlazingArea(draft);
 
   return (
@@ -200,16 +200,23 @@ export function WindowTypeLibrary({ types, language, onChange }: LibraryProps) {
 type PickerProps = {
   types: WindowTypeDefinition[];
   language: Language;
+  currentTypeId?: string | null;
   onApply: (type: WindowTypeDefinition) => void;
+  onDetach?: () => void;
 };
 
-export function WindowTypePicker({ types, language, onApply }: PickerProps) {
-  const [selectedId, setSelectedId] = useState("");
+export function WindowTypePicker({ types, language, currentTypeId = null, onApply, onDetach }: PickerProps) {
+  const [selectedId, setSelectedId] = useState(currentTypeId ?? "");
+  useEffect(() => setSelectedId(currentTypeId ?? ""), [currentTypeId]);
   const selected = useMemo(() => types.find((type) => type.id === selectedId) ?? null, [types, selectedId]);
-  const labels = language === "fr" ? { label: "Type de fenêtre", placeholder: "Choisir un type…", apply: "Appliquer", glazing: "vitrage" } : { label: "Window type", placeholder: "Choose a type…", apply: "Apply", glazing: "glazing" };
+  const linked = currentTypeId ? types.find((type) => type.id === currentTypeId) ?? null : null;
+  const labels = language === "fr"
+    ? { label: "Type de fenêtre", placeholder: "Choisir un type…", apply: "Appliquer et lier", glazing: "vitrage", linked: "Liée", detach: "Dissocier" }
+    : { label: "Window type", placeholder: "Choose a type…", apply: "Apply and link", glazing: "glazing", linked: "Linked", detach: "Detach" };
 
   return (
-    <div className="window-type-picker">
+    <div className={`window-type-picker${linked ? " is-linked" : ""}`}>
+      {linked ? <div className="linked-type-state"><span>{labels.linked}</span><strong>{linked.name}</strong>{onDetach ? <button type="button" onClick={onDetach}>{labels.detach}</button> : null}</div> : null}
       <label>
         <span>{labels.label}</span>
         <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
