@@ -27,6 +27,23 @@ export type SectionPoint = {
   offset: number;
 };
 
+export type OpeningType = "window" | "door" | "glazed-door";
+
+export type WallOpening = {
+  id: string;
+  name: string;
+  type: OpeningType;
+  /** Distance from wall start to the opening centre, in metres. */
+  position: number;
+  width: number;
+  height: number;
+  sillHeight: number;
+  /** Overall thermal transmittance of the opening, W/m².K. */
+  uValue: number;
+  /** Solar heat gain factor, 0 to 1. Kept at 0 for opaque doors. */
+  solarFactor: number;
+};
+
 export type Wall = {
   id: string;
   name: string;
@@ -39,6 +56,7 @@ export type Wall = {
   profile: ProfilePoint[];
   inclinationDeg?: number;
   sectionProfile?: SectionPoint[];
+  openings?: WallOpening[];
 };
 
 export type SurfaceAssembly = {
@@ -88,7 +106,7 @@ export type Space = {
   thermalZoneId?: string;
 };
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export type Project = {
   schemaVersion: number;
@@ -208,6 +226,7 @@ const createWall = (name: string, start: Point, end: Point, type: WallType, heig
   type,
   layers: type === "external" ? externalWallLayers() : type === "internal" ? internalWallLayers() : [],
   profile: rectangleProfile(Math.hypot(end.x - start.x, end.y - start.y), height),
+  openings: [],
 });
 
 export type CreateLevelOptions = {
@@ -255,6 +274,37 @@ const isPoint = (value: unknown): value is Point => {
   return Number.isFinite(point.x) && Number.isFinite(point.y);
 };
 
+const OPENING_TYPES = new Set<OpeningType>(["window", "door", "glazed-door"]);
+
+const migrateOpening = (value: unknown, fallbackIndex: number, wallLengthValue: number, wallHeight: number): WallOpening | null => {
+  if (!value || typeof value !== "object") return null;
+  const source = value as Partial<WallOpening>;
+  const type = typeof source.type === "string" && OPENING_TYPES.has(source.type as OpeningType)
+    ? source.type as OpeningType
+    : "window";
+  const width = Number.isFinite(source.width) ? Math.max(0.2, Math.min(wallLengthValue, Number(source.width))) : type === "door" ? 0.9 : 1.2;
+  const height = Number.isFinite(source.height) ? Math.max(0.2, Math.min(wallHeight, Number(source.height))) : type === "door" ? 2.1 : 1.2;
+  const maxSill = Math.max(0, wallHeight - height);
+  const sillHeight = type === "door" || type === "glazed-door"
+    ? 0
+    : Number.isFinite(source.sillHeight) ? Math.max(0, Math.min(maxSill, Number(source.sillHeight))) : Math.min(0.9, maxSill);
+  const halfWidth = width / 2;
+  const position = Number.isFinite(source.position)
+    ? Math.max(halfWidth, Math.min(Math.max(halfWidth, wallLengthValue - halfWidth), Number(source.position)))
+    : wallLengthValue / 2;
+  return {
+    id: typeof source.id === "string" ? source.id : createId(),
+    name: typeof source.name === "string" && source.name.trim() ? source.name : `Ouverture ${fallbackIndex + 1}`,
+    type,
+    position,
+    width,
+    height,
+    sillHeight,
+    uValue: Number.isFinite(source.uValue) ? Math.max(0.1, Number(source.uValue)) : type === "door" ? 1.8 : 1.3,
+    solarFactor: type === "door" ? 0 : Number.isFinite(source.solarFactor) ? Math.max(0, Math.min(1, Number(source.solarFactor))) : 0.55,
+  };
+};
+
 const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: number): Wall | null => {
   if (!value || typeof value !== "object") return null;
   const source = value as Partial<Wall>;
@@ -268,6 +318,11 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
       .map((point) => ({ id: point.id || createId(), height: Number(point.height), offset: Number(point.offset) }))
       .filter((point) => Number.isFinite(point.height) && Number.isFinite(point.offset))
     : undefined;
+  const openings = type === "virtual" || !Array.isArray(source.openings)
+    ? []
+    : source.openings
+      .map((opening, openingIndex) => migrateOpening(opening, openingIndex, length, height))
+      .filter((opening): opening is WallOpening => Boolean(opening));
   return {
     id: typeof source.id === "string" ? source.id : createId(),
     name: typeof source.name === "string" ? source.name : `Mur ${fallbackIndex + 1}`,
@@ -284,6 +339,7 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
     profile: Array.isArray(source.profile) && source.profile.length >= 2 ? source.profile.map((point) => ({ ...point, id: point.id || createId() })) : rectangleProfile(length, height),
     inclinationDeg: type === "virtual" ? undefined : inclinationDeg,
     sectionProfile: type === "virtual" ? undefined : sectionProfile,
+    openings,
   };
 };
 
