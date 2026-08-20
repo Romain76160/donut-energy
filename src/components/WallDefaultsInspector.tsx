@@ -1,5 +1,5 @@
 import { materialLabel, type Language } from "../i18n";
-import type { Wall, WallType } from "../model";
+import type { PhysicalWallType, Wall } from "../model";
 import {
   resetWallTemplate,
   wallTemplateFromWall,
@@ -23,7 +23,7 @@ function DefaultCard({
   language,
   onChange,
 }: {
-  type: WallType;
+  type: PhysicalWallType;
   walls: Wall[];
   template: WallDefaultTemplate;
   language: Language;
@@ -61,7 +61,7 @@ function DefaultCard({
           <h3>{labels.title}</h3>
           <p>{labels.help}</p>
         </div>
-        <span className="wall-default-type-badge">{type === "external" ? (language === "fr" ? "EXT." : "EXT.") : (language === "fr" ? "INT." : "INT.")}</span>
+        <span className="wall-default-type-badge">{type === "external" ? "EXT." : "INT."}</span>
       </div>
 
       <label className="wall-default-select">
