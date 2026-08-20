@@ -4,16 +4,15 @@ import { ModelSidebar } from "./components/ModelSidebar";
 import { PlanCanvas } from "./components/PlanCanvas";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
+import { WallDefaultsInspector } from "./components/WallDefaultsInspector";
 import { WallInspector } from "./components/WallInspector";
 import { detectRooms, nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
 import { translations, type Language } from "./i18n";
 import {
   createId,
   createLevel,
-  externalWallLayers,
   gableProfile,
   initialProject,
-  internalWallLayers,
   MATERIALS,
   migrateProject,
   normalizeProfile,
@@ -31,9 +30,11 @@ import {
   type Wall,
   type WallLayer,
 } from "./model";
+import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaults } from "./wallDefaults";
 
 type History = { past: Project[]; present: Project; future: Project[] };
 type SurfaceKey = "floor" | "ceiling";
+type InspectorView = "context" | "defaults";
 
 const loadProject = () => {
   try {
@@ -68,6 +69,8 @@ function App() {
   const [history, setHistory] = useState<History>(() => ({ past: [], present: loadProject(), future: [] }));
   const [activeLevelId, setActiveLevelId] = useState(() => history.present.levels[0]?.id ?? "");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(() => history.present.levels[0]?.walls[0]?.id ?? null);
+  const [inspectorView, setInspectorView] = useState<InspectorView>("context");
+  const [wallDefaults, setWallDefaults] = useState<WallDefaults>(loadWallDefaults);
   const [mode, setMode] = useState<EditorMode>("select");
   const [draftStart, setDraftStart] = useState<Point | null>(null);
   const [drawLength, setDrawLength] = useState(4);
@@ -86,6 +89,7 @@ function App() {
     () => activeLevel?.walls.find((wall) => wall.id === selectedWallId) ?? null,
     [activeLevel, selectedWallId],
   );
+  const allWalls = useMemo(() => project.levels.flatMap((level) => level.walls), [project.levels]);
   const rooms = useMemo(() => detectRooms(activeLevel?.walls ?? []), [activeLevel?.walls]);
   const lowerWalls = useMemo(() => {
     if (!activeLevel?.showLowerReference) return [];
@@ -135,6 +139,10 @@ function App() {
       // North orientation persistence is optional when storage is unavailable.
     }
   }, [northAngle]);
+
+  useEffect(() => {
+    saveWallDefaults(wallDefaults);
+  }, [wallDefaults]);
 
   const commit = (update: (current: Project) => Project) => {
     setSaved(false);
@@ -217,7 +225,7 @@ function App() {
       height: activeLevel.defaultHeight,
       orientation: orientationFromPoints(start, end),
       type,
-      layers: type === "external" ? externalWallLayers() : internalWallLayers(),
+      layers: wallTemplateLayers(wallDefaults, type),
       profile: rectangleProfile(length, activeLevel.defaultHeight),
     };
 
@@ -227,6 +235,7 @@ function App() {
       return { ...level, walls: [...walls, newWall] };
     });
     setSelectedWallId(id);
+    setInspectorView("context");
     setDraftStart(end);
   };
 
@@ -237,6 +246,7 @@ function App() {
       if (!hit || hit.t <= 0.02 || hit.t >= 0.98) return;
       commitActiveLevel((level) => ({ ...level, walls: splitWallsAtPoint(level.walls, hit.point) }));
       setSelectedWallId(null);
+      setInspectorView("context");
       setMode("select");
       return;
     }
@@ -261,6 +271,7 @@ function App() {
 
   const handleModeChange = (nextMode: EditorMode) => {
     setMode(nextMode);
+    setInspectorView("context");
     setDraftStart(null);
     if (nextMode !== "select") setSelectedWallId(null);
   };
@@ -278,6 +289,7 @@ function App() {
     commit((current) => ({ ...current, levels: [...current.levels, level] }));
     setActiveLevelId(level.id);
     setSelectedWallId(null);
+    setInspectorView("context");
     setMode("select");
     setDraftStart(null);
   };
@@ -285,6 +297,14 @@ function App() {
   const selectLevel = (id: string) => {
     setActiveLevelId(id);
     setSelectedWallId(null);
+    setInspectorView("context");
+    setMode("select");
+    setDraftStart(null);
+  };
+
+  const openWallDefaults = () => {
+    setSelectedWallId(null);
+    setInspectorView("defaults");
     setMode("select");
     setDraftStart(null);
   };
@@ -304,6 +324,7 @@ function App() {
   const save = () => {
     try {
       localStorage.setItem("donut-energy-project", JSON.stringify(project));
+      saveWallDefaults(wallDefaults);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1800);
     } catch {
@@ -395,12 +416,14 @@ function App() {
           walls={activeLevel.walls}
           roomCount={rooms.length}
           selectedWallId={selectedWallId}
+          defaultsOpen={inspectorView === "defaults"}
           draftStart={draftStart}
           drawLength={drawLength}
           drawAngle={drawAngle}
           language={language}
           onModeChange={handleModeChange}
-          onSelectWall={(id) => { setSelectedWallId(id); setMode("select"); setDraftStart(null); }}
+          onSelectWall={(id) => { setSelectedWallId(id); setInspectorView("context"); setMode("select"); setDraftStart(null); }}
+          onOpenWallDefaults={openWallDefaults}
           onSelectLevel={selectLevel}
           onAddLevel={addLevel}
           onDrawLengthChange={setDrawLength}
@@ -418,13 +441,20 @@ function App() {
           draftStart={draftStart}
           northAngle={northAngle}
           language={language}
-          onSelectWall={setSelectedWallId}
-          onClearSelection={() => setSelectedWallId(null)}
+          onSelectWall={(id) => { setSelectedWallId(id); setInspectorView("context"); }}
+          onClearSelection={() => { if (inspectorView !== "defaults") setSelectedWallId(null); }}
           onCanvasPoint={handleCanvasPoint}
           onZoomChange={setZoom}
           onNorthAngleChange={setNorthAngle}
         />
-        {selectedWall ? (
+        {inspectorView === "defaults" ? (
+          <WallDefaultsInspector
+            walls={allWalls}
+            defaults={wallDefaults}
+            language={language}
+            onChange={setWallDefaults}
+          />
+        ) : selectedWall ? (
           <WallInspector
             wall={selectedWall}
             language={language}
