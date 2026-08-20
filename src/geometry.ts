@@ -153,6 +153,16 @@ const splitSingleWall = (wall: Wall, point: Point): Wall[] => {
   }
   if (secondProfile.at(-1)?.position !== secondLength) secondProfile.push({ id: createId(), position: secondLength, height: heightAt(length) });
 
+  // An opening belongs to the child segment containing its centre. This prevents duplication
+  // when a wall is split by a node or a new perpendicular boundary.
+  const sourceOpenings = wall.openings ?? [];
+  const firstOpenings = sourceOpenings
+    .filter((opening) => opening.position <= firstLength)
+    .map((opening) => ({ ...opening }));
+  const secondOpenings = sourceOpenings
+    .filter((opening) => opening.position > firstLength)
+    .map((opening) => ({ ...opening, position: opening.position - firstLength }));
+
   return [
     {
       ...wall,
@@ -161,6 +171,7 @@ const splitSingleWall = (wall: Wall, point: Point): Wall[] => {
       end: { ...point },
       orientation: orientationFromPoints(wall.start, point),
       profile: firstProfile,
+      openings: firstOpenings,
     },
     {
       ...wall,
@@ -169,6 +180,7 @@ const splitSingleWall = (wall: Wall, point: Point): Wall[] => {
       start: { ...point },
       orientation: orientationFromPoints(point, wall.end),
       profile: secondProfile,
+      openings: secondOpenings,
     },
   ];
 };
