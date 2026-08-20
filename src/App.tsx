@@ -4,6 +4,7 @@ import { ModelSidebar } from "./components/ModelSidebar";
 import { PlanCanvas } from "./components/PlanCanvas";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
+import { VirtualWallInspector } from "./components/VirtualWallInspector";
 import { WallDefaultsInspector } from "./components/WallDefaultsInspector";
 import { WallInspector } from "./components/WallInspector";
 import { detectRooms, nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
@@ -29,6 +30,7 @@ import {
   type Project,
   type Wall,
   type WallLayer,
+  type WallType,
 } from "./model";
 import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaults } from "./wallDefaults";
 
@@ -63,7 +65,7 @@ const loadNorthAngle = () => {
   }
 };
 
-const drawingMode = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal";
+const drawingMode = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
 
 function App() {
   const [history, setHistory] = useState<History>(() => ({ past: [], present: loadProject(), future: [] }));
@@ -174,7 +176,7 @@ function App() {
   };
 
   const updateWallLength = (length: number) => {
-    if (!selectedWall || !Number.isFinite(length) || length < 0.2) return;
+    if (!selectedWall || !Number.isFinite(length) || length < 0.1) return;
     const currentLength = wallLength(selectedWall);
     if (!currentLength) return;
     const oldEnd = selectedWall.end;
@@ -182,6 +184,19 @@ function App() {
       x: selectedWall.start.x + ((selectedWall.end.x - selectedWall.start.x) / currentLength) * length,
       y: selectedWall.start.y + ((selectedWall.end.y - selectedWall.start.y) / currentLength) * length,
     };
+
+    if (selectedWall.type === "virtual") {
+      commitActiveLevel((level) => ({
+        ...level,
+        walls: level.walls.map((wall) => wall.id === selectedWall.id ? {
+          ...wall,
+          end: newEnd,
+          orientation: orientationFromPoints(wall.start, newEnd),
+          profile: resizeProfile(wall, length),
+        } : wall),
+      }));
+      return;
+    }
 
     commitActiveLevel((level) => ({
       ...level,
@@ -215,17 +230,20 @@ function App() {
     if (!activeLevel || !drawingMode(mode)) return;
     const length = Math.hypot(end.x - start.x, end.y - start.y);
     if (length < 0.15) return;
-    const type = mode === "draw-internal" ? "internal" : "external";
+    const type: WallType = mode === "draw-virtual" ? "virtual" : mode === "draw-internal" ? "internal" : "external";
     const id = createId();
+    const virtualCount = activeLevel.walls.filter((wall) => wall.type === "virtual").length + 1;
     const newWall: Wall = {
       id,
-      name: translations[language].newWall(activeLevel.walls.length + 1),
+      name: type === "virtual"
+        ? (language === "fr" ? `Séparation virtuelle ${virtualCount}` : `Virtual boundary ${virtualCount}`)
+        : translations[language].newWall(activeLevel.walls.length + 1),
       start,
       end,
       height: activeLevel.defaultHeight,
       orientation: orientationFromPoints(start, end),
       type,
-      layers: wallTemplateLayers(wallDefaults, type),
+      layers: type === "virtual" ? [] : wallTemplateLayers(wallDefaults, type),
       profile: rectangleProfile(length, activeLevel.defaultHeight),
     };
 
@@ -453,6 +471,13 @@ function App() {
             defaults={wallDefaults}
             language={language}
             onChange={setWallDefaults}
+          />
+        ) : selectedWall?.type === "virtual" ? (
+          <VirtualWallInspector
+            wall={selectedWall}
+            language={language}
+            onUpdateWall={(patch) => updateSelectedWall((wall) => ({ ...wall, ...patch }))}
+            onUpdateLength={updateWallLength}
           />
         ) : selectedWall ? (
           <WallInspector
