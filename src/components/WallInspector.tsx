@@ -16,11 +16,21 @@ import {
 import { wallArea, wallOpeningArea, wallOpaqueArea, wallResistance, wallTransmissionCoefficient, wallUValue } from "../thermal";
 import { normalizeWallSectionProfile } from "../wallInclination";
 import { wallProfileFromPreset, type WallProfilePreset } from "../wallProfilePresets";
+import {
+  applyWallTypeToWall,
+  linkWallType,
+  loadWallTypes,
+  readWallTypeLink,
+  saveWallTypes,
+  unlinkWallType,
+  type WallTypeDefinition,
+} from "../wallTypes";
 import "../wall-inspector-editing.css";
 import { WallOpeningsEditor } from "./WallOpeningsEditor";
 import { WallProfileEditor } from "./WallProfileEditor";
 import { WallSectionView } from "./WallSectionView";
 import { WallShapeLibrary } from "./WallShapeLibrary";
+import { WallTypeLibrary } from "./WallTypeLibrary";
 
 type Props = {
   wall: Wall | null;
@@ -54,6 +64,8 @@ export function WallInspector({
   onRemoveProfilePoint,
 }: Props) {
   const [shapeLibraryOpen, setShapeLibraryOpen] = useState(false);
+  const [wallTypes, setWallTypes] = useState<WallTypeDefinition[]>(loadWallTypes);
+  const [, setTypeLinkRevision] = useState(0);
   const text = translations[language];
   const locale = localeFor(language);
   const automaticLabel = language === "fr" ? "Calculée depuis le nord du projet" : "Calculated from project north";
@@ -62,6 +74,24 @@ export function WallInspector({
 
   const profile = normalizeProfile(wall);
   const length = wallLength(wall);
+  const currentWallTypeId = readWallTypeLink(wall.id);
+
+  const detachWallType = () => {
+    unlinkWallType(wall.id);
+    setTypeLinkRevision((value) => value + 1);
+  };
+
+  const changeWallTypes = (next: WallTypeDefinition[]) => {
+    setWallTypes(next);
+    saveWallTypes(next);
+  };
+
+  const applyLinkedWallType = (type: WallTypeDefinition) => {
+    const next = applyWallTypeToWall(wall, type);
+    linkWallType(wall.id, type.id);
+    setTypeLinkRevision((value) => value + 1);
+    onUpdateWall({ type: next.type, layers: next.layers });
+  };
 
   const updatePoint = (id: string, patch: Partial<ProfilePoint>) => {
     const next = profile.map((point, index) => {
@@ -124,7 +154,7 @@ export function WallInspector({
         </label>
         <label>
           <span>{text.wallType}</span>
-          <select value={wall.type} onChange={(event) => onUpdateWall({ type: event.target.value as WallType })}>
+          <select value={wall.type} onChange={(event) => { detachWallType(); onUpdateWall({ type: event.target.value as WallType }); }}>
             <option value="external">{text.external}</option>
             <option value="internal">{text.internal}</option>
           </select>
@@ -151,6 +181,16 @@ export function WallInspector({
           </div>
         </label>
       </div>
+
+      <WallTypeLibrary
+        wall={wall}
+        types={wallTypes}
+        currentTypeId={currentWallTypeId}
+        language={language}
+        onChange={changeWallTypes}
+        onApply={applyLinkedWallType}
+        onDetach={detachWallType}
+      />
 
       <div className="inspector-section profile-section">
         <div className="section-title-row">
@@ -214,21 +254,21 @@ export function WallInspector({
                   value={layer.name}
                   onChange={(event) => {
                     const material = MATERIALS.find((item) => item.name === event.target.value);
-                    if (material) onUpdateLayer(layer.id, material);
+                    if (material) { detachWallType(); onUpdateLayer(layer.id, material); }
                   }}
                 >
                   {MATERIALS.map((material) => <option key={material.name} value={material.name}>{materialLabel(material.name, language)}</option>)}
                 </select>
                 <div className="unit-input compact">
-                  <input aria-label={text.thicknessOf(displayedMaterial)} type="number" min="1" step="1" value={layer.thicknessMm} onChange={(event) => onUpdateLayer(layer.id, { thicknessMm: Math.max(1, Number(event.target.value)) })} />
+                  <input aria-label={text.thicknessOf(displayedMaterial)} type="number" min="1" step="1" value={layer.thicknessMm} onChange={(event) => { detachWallType(); onUpdateLayer(layer.id, { thicknessMm: Math.max(1, Number(event.target.value)) }); }} />
                   <b>mm</b>
                 </div>
-                <button className="icon-button" aria-label={text.deleteMaterial(displayedMaterial)} onClick={() => onRemoveLayer(layer.id)} disabled={wall.layers.length === 1}><TrashIcon /></button>
+                <button className="icon-button" aria-label={text.deleteMaterial(displayedMaterial)} onClick={() => { detachWallType(); onRemoveLayer(layer.id); }} disabled={wall.layers.length === 1}><TrashIcon /></button>
               </div>
             );
           })}
         </div>
-        <button className="add-layer-button" onClick={onAddLayer}><PlusIcon /> {text.addLayer}</button>
+        <button className="add-layer-button" onClick={() => { detachWallType(); onAddLayer(); }}><PlusIcon /> {text.addLayer}</button>
       </div>
 
       <div className="inspector-section performance-section">
