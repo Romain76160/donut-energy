@@ -1,7 +1,8 @@
 export type Point = { x: number; y: number };
 
 export type Orientation = "Nord" | "Est" | "Sud" | "Ouest";
-export type WallType = "external" | "internal";
+export type PhysicalWallType = "external" | "internal";
+export type WallType = PhysicalWallType | "virtual";
 
 export type Material = {
   name: string;
@@ -61,7 +62,7 @@ export type Project = {
   levels: Level[];
 };
 
-export type EditorMode = "select" | "draw-external" | "draw-internal" | "node";
+export type EditorMode = "select" | "draw-external" | "draw-internal" | "draw-virtual" | "node";
 
 export const MATERIALS: Material[] = [
   { name: "Plaque de plâtre", conductivity: 0.25, color: "#e8e5dc" },
@@ -164,7 +165,7 @@ const createWall = (name: string, start: Point, end: Point, type: WallType, heig
   height,
   orientation: orientationFromPoints(start, end),
   type,
-  layers: type === "external" ? externalWallLayers() : internalWallLayers(),
+  layers: type === "external" ? externalWallLayers() : type === "internal" ? internalWallLayers() : [],
   profile: rectangleProfile(Math.hypot(end.x - start.x, end.y - start.y), height),
 });
 
@@ -204,7 +205,7 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
   if (!isPoint(source.start) || !isPoint(source.end)) return null;
   const height = Number.isFinite(source.height) ? Math.max(0.5, Number(source.height)) : defaultHeight;
   const length = Math.hypot(source.end.x - source.start.x, source.end.y - source.start.y);
-  const type: WallType = source.type === "internal" ? "internal" : "external";
+  const type: WallType = source.type === "virtual" ? "virtual" : source.type === "internal" ? "internal" : "external";
   const inclinationDeg = Number.isFinite(source.inclinationDeg) ? Number(source.inclinationDeg) : undefined;
   const sectionProfile = Array.isArray(source.sectionProfile) && source.sectionProfile.length >= 2
     ? source.sectionProfile
@@ -219,10 +220,14 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
     height,
     orientation: source.orientation ?? orientationFromPoints(source.start, source.end),
     type,
-    layers: Array.isArray(source.layers) && source.layers.length ? source.layers.map((layer) => ({ ...layer, id: layer.id || createId() })) : (type === "external" ? externalWallLayers() : internalWallLayers()),
+    layers: type === "virtual"
+      ? []
+      : Array.isArray(source.layers) && source.layers.length
+        ? source.layers.map((layer) => ({ ...layer, id: layer.id || createId() }))
+        : type === "external" ? externalWallLayers() : internalWallLayers(),
     profile: Array.isArray(source.profile) && source.profile.length >= 2 ? source.profile.map((point) => ({ ...point, id: point.id || createId() })) : rectangleProfile(length, height),
-    inclinationDeg,
-    sectionProfile,
+    inclinationDeg: type === "virtual" ? undefined : inclinationDeg,
+    sectionProfile: type === "virtual" ? undefined : sectionProfile,
   };
 };
 
