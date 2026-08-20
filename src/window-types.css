@@ -1,0 +1,346 @@
+.window-type-library {
+  border: 1px solid #dfe5ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.window-type-library > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  cursor: pointer;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.window-type-library > summary::-webkit-details-marker {
+  display: none;
+}
+
+.window-type-library > summary::before {
+  content: "▸";
+  margin-right: 7px;
+  color: #667085;
+  transition: transform 0.16s ease;
+}
+
+.window-type-library[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.window-type-library > summary > span {
+  margin-right: auto;
+}
+
+.window-type-library > summary small {
+  color: #667085;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.window-type-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  padding: 0 10px 10px;
+}
+
+.window-type-tabs button {
+  min-height: 32px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: #fff;
+  color: #475467;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.window-type-tabs button.active {
+  border-color: #4f91ad;
+  background: #eaf4f8;
+  color: #1d596f;
+}
+
+.window-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.window-type-card,
+.window-type-new-card {
+  min-width: 0;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.window-type-card {
+  overflow: hidden;
+}
+
+.window-type-preview {
+  width: 100%;
+  min-height: 68px;
+  max-height: 105px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  background: #f2f4f7;
+}
+
+.window-type-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 56px;
+  background: #8d99a8;
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.18);
+}
+
+.window-operation-preview {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: rgba(173, 216, 230, 0.42);
+  color: #496779;
+}
+
+.window-operation-preview rect,
+.window-operation-preview path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.window-operation-preview path.secondary {
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+}
+
+.window-type-card-body {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+}
+
+.window-type-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.window-type-card-head strong {
+  color: #182230;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.window-type-card-head span {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #667085;
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.window-type-card-body > small {
+  color: #667085;
+  font-size: 9px;
+}
+
+.window-type-card-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  color: #475467;
+  font-size: 8.5px;
+  font-weight: 650;
+}
+
+.window-type-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 3px;
+}
+
+.window-type-card-actions button,
+.window-type-new-card,
+.window-type-editor-actions button,
+.window-type-picker > button {
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #475467;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.window-type-card-actions button {
+  min-height: 26px;
+  padding: 3px 7px;
+}
+
+.window-type-card-actions button.danger {
+  color: #b42318;
+}
+
+.window-type-new-card {
+  min-height: 108px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  border-style: dashed;
+  color: #475467;
+}
+
+.window-type-new-card span {
+  font-size: 22px;
+  line-height: 1;
+  color: #4f91ad;
+}
+
+.window-type-editor {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 10px;
+}
+
+.window-type-editor-preview {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.8fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.window-type-editor-preview > div:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.window-type-editor-preview strong {
+  color: #182230;
+  font-size: 11px;
+}
+
+.window-type-editor-preview small,
+.window-type-editor-preview span {
+  color: #667085;
+  font-size: 9px;
+}
+
+.window-type-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.window-type-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.window-type-fields label.wide {
+  grid-column: 1 / -1;
+}
+
+.window-type-fields label > span,
+.window-type-picker label > span {
+  color: #475467;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.window-type-fields input,
+.window-type-fields select,
+.window-type-picker select {
+  min-width: 0;
+}
+
+.window-type-editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.window-type-editor-actions button {
+  min-height: 31px;
+  padding: 5px 10px;
+}
+
+.window-type-editor-actions button.primary {
+  border-color: #2f7188;
+  background: #2f7188;
+  color: #fff;
+}
+
+.window-type-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 5px 7px;
+  padding: 8px;
+  border: 1px solid #dfe5ec;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.window-type-picker label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.window-type-picker small {
+  grid-column: 1 / -1;
+  color: #667085;
+  font-size: 8.5px;
+}
+
+.window-type-picker > button {
+  min-height: 32px;
+  padding: 4px 9px;
+  border-color: #4f91ad;
+  color: #1d596f;
+}
+
+.window-type-picker > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1180px) {
+  .window-type-grid,
+  .window-type-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .window-type-fields label.wide {
+    grid-column: auto;
+  }
+
+  .window-type-editor-preview {
+    grid-template-columns: 1fr;
+  }
+}
