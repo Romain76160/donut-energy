@@ -63,9 +63,38 @@ export type Level = {
   ceiling: SurfaceAssembly;
 };
 
+export type SpaceUsage =
+  | "unspecified"
+  | "living"
+  | "bedroom"
+  | "kitchen"
+  | "bathroom"
+  | "office"
+  | "circulation"
+  | "technical"
+  | "storage"
+  | "other";
+
+export type Space = {
+  id: string;
+  levelId: string;
+  name: string;
+  polygon: Point[];
+  area: number;
+  perimeter: number;
+  centroid: Point;
+  usage: SpaceUsage;
+  temperatureSetpoint: number;
+  thermalZoneId?: string;
+};
+
+export const CURRENT_SCHEMA_VERSION = 2;
+
 export type Project = {
+  schemaVersion: number;
   title: string;
   levels: Level[];
+  spaces: Space[];
 };
 
 export type EditorMode = "select" | "draw-external" | "draw-internal" | "draw-virtual" | "node";
@@ -214,8 +243,10 @@ export const createLevel = (name: string, elevation: number, withSeedWalls = fal
 };
 
 export const initialProject = (): Project => ({
+  schemaVersion: CURRENT_SCHEMA_VERSION,
   title: "Projet sans titre",
   levels: [createLevel("RDC", 0, true)],
+  spaces: [],
 });
 
 const isPoint = (value: unknown): value is Point => {
@@ -256,9 +287,48 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
   };
 };
 
+const SPACE_USAGES = new Set<SpaceUsage>([
+  "unspecified",
+  "living",
+  "bedroom",
+  "kitchen",
+  "bathroom",
+  "office",
+  "circulation",
+  "technical",
+  "storage",
+  "other",
+]);
+
+const migrateSpace = (value: unknown, validLevelIds: Set<string>): Space | null => {
+  if (!value || typeof value !== "object") return null;
+  const source = value as Partial<Space>;
+  if (typeof source.levelId !== "string" || !validLevelIds.has(source.levelId)) return null;
+  const polygon = Array.isArray(source.polygon) ? source.polygon.filter(isPoint).map((point) => ({ ...point })) : [];
+  if (polygon.length < 3) return null;
+  const centroid = isPoint(source.centroid)
+    ? { ...source.centroid }
+    : polygon.reduce((sum, point) => ({ x: sum.x + point.x / polygon.length, y: sum.y + point.y / polygon.length }), { x: 0, y: 0 });
+  const usage = typeof source.usage === "string" && SPACE_USAGES.has(source.usage as SpaceUsage)
+    ? source.usage as SpaceUsage
+    : "unspecified";
+  return {
+    id: typeof source.id === "string" ? source.id : createId(),
+    levelId: source.levelId,
+    name: typeof source.name === "string" && source.name.trim() ? source.name : "Pièce",
+    polygon,
+    area: Number.isFinite(source.area) ? Math.max(0, Number(source.area)) : 0,
+    perimeter: Number.isFinite(source.perimeter) ? Math.max(0, Number(source.perimeter)) : 0,
+    centroid,
+    usage,
+    temperatureSetpoint: Number.isFinite(source.temperatureSetpoint) ? Number(source.temperatureSetpoint) : 19,
+    thermalZoneId: typeof source.thermalZoneId === "string" ? source.thermalZoneId : undefined,
+  };
+};
+
 export const migrateProject = (value: unknown): Project => {
   if (!value || typeof value !== "object") return initialProject();
-  const source = value as { title?: unknown; levels?: unknown; walls?: unknown };
+  const source = value as { schemaVersion?: unknown; title?: unknown; levels?: unknown; walls?: unknown; spaces?: unknown };
   const title = typeof source.title === "string" ? source.title : "Projet sans titre";
 
   if (Array.isArray(source.levels) && source.levels.length) {
@@ -286,13 +356,17 @@ export const migrateProject = (value: unknown): Project => {
         ceiling: levelSource.ceiling?.layers?.length ? levelSource.ceiling : { name: "Plafond", layers: ceilingLayers() },
       } satisfies Level;
     });
-    return { title, levels };
+    const validLevelIds = new Set(levels.map((level) => level.id));
+    const spaces = Array.isArray(source.spaces)
+      ? source.spaces.map((space) => migrateSpace(space, validLevelIds)).filter((space): space is Space => Boolean(space))
+      : [];
+    return { schemaVersion: CURRENT_SCHEMA_VERSION, title, levels, spaces };
   }
 
   if (Array.isArray(source.walls)) {
     const level = createLevel("RDC", 0, false);
     level.walls = source.walls.map((wall, index) => migrateWall(wall, index, level.defaultHeight)).filter((wall): wall is Wall => Boolean(wall));
-    return { title, levels: [level] };
+    return { schemaVersion: CURRENT_SCHEMA_VERSION, title, levels: [level], spaces: [] };
   }
 
   return initialProject();

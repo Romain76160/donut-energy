@@ -1,0 +1,90 @@
+.space-shape {
+  cursor: pointer;
+}
+
+.space-shape polygon {
+  transition: fill .14s ease, stroke .14s ease, stroke-width .14s ease;
+  pointer-events: all;
+}
+
+.space-shape:hover polygon {
+  fill: rgba(62, 126, 176, .1);
+  stroke: rgba(62, 126, 176, .48);
+}
+
+.space-shape.selected polygon {
+  fill: rgba(51, 119, 171, .16);
+  stroke: #3377ab;
+  stroke-width: 2;
+}
+
+.space-shape.selected text {
+  fill: #244f73;
+  font-weight: 850;
+}
+
+.space-inspector-intro {
+  margin: -5px 0 14px;
+  color: #788697;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.space-readonly-field {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid #dce3e9;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #718093;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.space-metrics {
+  margin: 0;
+  display: grid;
+  gap: 0;
+  border: 1px solid #e1e6eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.space-metrics > div {
+  min-height: 39px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.space-metrics > div:last-child {
+  border-bottom: 0;
+}
+
+.space-metrics dt {
+  color: #758394;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.space-metrics dd {
+  margin: 0;
+  color: #314b64;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.space-metrics > div.primary {
+  background: #f3f8fc;
+}
+
+.space-metrics > div.primary dd {
+  color: #276c9d;
+  font-size: 13px;
+}
