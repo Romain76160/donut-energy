@@ -1,6 +1,7 @@
 import { PlusIcon, PointerIcon, WallIcon } from "../icons";
 import { translations, type Language } from "../i18n";
 import type { EditorMode, Level, Point, Wall } from "../model";
+import "../virtual-walls.css";
 
 type Props = {
   mode: EditorMode;
@@ -25,7 +26,7 @@ type Props = {
   onFinishDrawing: () => void;
 };
 
-const drawingMode = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal";
+const drawingMode = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
 
 export function ModelSidebar({
   mode,
@@ -51,6 +52,12 @@ export function ModelSidebar({
 }: Props) {
   const text = translations[language];
   const defaultWallsLabel = language === "fr" ? "Murs par défaut" : "Default walls";
+  const virtualLabel = language === "fr" ? "Séparation virtuelle" : "Virtual boundary";
+  const wallTypeLabel = (wall: Wall) => wall.type === "external"
+    ? text.external
+    : wall.type === "internal"
+      ? text.internal
+      : language === "fr" ? "Virtuel" : "Virtual";
 
   return (
     <aside className="model-sidebar" aria-label={text.buildingModel}>
@@ -65,6 +72,9 @@ export function ModelSidebar({
           </button>
           <button className={mode === "draw-internal" ? "active" : ""} onClick={() => onModeChange("draw-internal")}>
             <WallIcon /> {text.drawInternal}
+          </button>
+          <button className={`virtual-tool ${mode === "draw-virtual" ? "active" : ""}`} onClick={() => onModeChange("draw-virtual")}>
+            <WallIcon /> {virtualLabel}
           </button>
           <button className={mode === "node" ? "active" : ""} onClick={() => onModeChange("node")}>
             <PlusIcon /> {text.addNode}
@@ -111,7 +121,7 @@ export function ModelSidebar({
             >
               <span className="wall-line-icon" />
               <span>{wall.name}</span>
-              <small>{wall.type === "external" ? text.external : text.internal}</small>
+              <small>{wallTypeLabel(wall)}</small>
             </button>
           ))}
         </div>
