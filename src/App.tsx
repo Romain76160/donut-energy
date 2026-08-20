@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { LevelCreationPanel, type NewLevelDefinition } from "./components/LevelCreationPanel";
 import { LevelInspector } from "./components/LevelInspector";
 import { ModelSidebar } from "./components/ModelSidebar";
-import { PlanCanvas } from "./components/PlanCanvas";
+import { SpaceInspector } from "./components/SpaceInspector";
+import { SpacePlanCanvas } from "./components/SpacePlanCanvas";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
 import { VirtualWallInspector } from "./components/VirtualWallInspector";
 import { WallDefaultsInspector } from "./components/WallDefaultsInspector";
 import { WallInspector } from "./components/WallInspector";
-import { detectRooms, nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
+import { nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
 import { translations, type Language } from "./i18n";
 import {
   createId,
@@ -29,10 +30,12 @@ import {
   type Point,
   type ProfilePoint,
   type Project,
+  type Space,
   type Wall,
   type WallLayer,
   type WallType,
 } from "./model";
+import { syncProjectSpaces } from "./spaces";
 import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaults } from "./wallDefaults";
 
 type History = { past: Project[]; present: Project; future: Project[] };
@@ -42,11 +45,11 @@ type InspectorView = "context" | "defaults" | "create-level";
 const loadProject = () => {
   try {
     const saved = localStorage.getItem("donut-energy-project");
-    if (saved) return migrateProject(JSON.parse(saved));
+    if (saved) return syncProjectSpaces(migrateProject(JSON.parse(saved)));
   } catch {
     // A malformed or outdated local save must never prevent the editor from opening.
   }
-  return initialProject();
+  return syncProjectSpaces(initialProject());
 };
 
 const loadLanguage = (): Language => {
@@ -72,6 +75,7 @@ function App() {
   const [history, setHistory] = useState<History>(() => ({ past: [], present: loadProject(), future: [] }));
   const [activeLevelId, setActiveLevelId] = useState(() => history.present.levels[0]?.id ?? "");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(() => history.present.levels[0]?.walls[0]?.id ?? null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [inspectorView, setInspectorView] = useState<InspectorView>("context");
   const [wallDefaults, setWallDefaults] = useState<WallDefaults>(loadWallDefaults);
   const [mode, setMode] = useState<EditorMode>("select");
@@ -88,12 +92,20 @@ function App() {
     () => project.levels.find((level) => level.id === activeLevelId) ?? project.levels[0],
     [project.levels, activeLevelId],
   );
+  const activeSpaces = useMemo(
+    () => activeLevel ? project.spaces.filter((space) => space.levelId === activeLevel.id) : [],
+    [project.spaces, activeLevel],
+  );
   const selectedWall = useMemo(
     () => activeLevel?.walls.find((wall) => wall.id === selectedWallId) ?? null,
     [activeLevel, selectedWallId],
   );
+  const selectedSpace = useMemo(
+    () => activeSpaces.find((space) => space.id === selectedSpaceId) ?? null,
+    [activeSpaces, selectedSpaceId],
+  );
   const allWalls = useMemo(() => project.levels.flatMap((level) => level.walls), [project.levels]);
-  const rooms = useMemo(() => detectRooms(activeLevel?.walls ?? []), [activeLevel?.walls]);
+  const rooms = activeSpaces;
   const lowerWalls = useMemo(() => {
     if (!activeLevel?.showLowerReference) return [];
     const lower = project.levels
@@ -117,7 +129,8 @@ function App() {
       return;
     }
     if (selectedWallId && !activeLevel.walls.some((wall) => wall.id === selectedWallId)) setSelectedWallId(null);
-  }, [activeLevel, project.levels, selectedWallId]);
+    if (selectedSpaceId && !activeSpaces.some((space) => space.id === selectedSpaceId)) setSelectedSpaceId(null);
+  }, [activeLevel, activeSpaces, project.levels, selectedSpaceId, selectedWallId]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -150,8 +163,9 @@ function App() {
   const commit = (update: (current: Project) => Project) => {
     setSaved(false);
     setHistory((current) => {
-      const next = update(current.present);
-      if (next === current.present) return current;
+      const rawNext = update(current.present);
+      if (rawNext === current.present) return current;
+      const next = syncProjectSpaces(rawNext);
       return {
         past: [...current.past.slice(-49), current.present],
         present: next,
@@ -173,6 +187,14 @@ function App() {
     commitActiveLevel((level) => ({
       ...level,
       walls: level.walls.map((wall) => wall.id === selectedWallId ? update(wall) : wall),
+    }));
+  };
+
+  const updateSelectedSpace = (patch: Partial<Space>) => {
+    if (!selectedSpaceId) return;
+    commit((current) => ({
+      ...current,
+      spaces: current.spaces.map((space) => space.id === selectedSpaceId ? { ...space, ...patch } : space),
     }));
   };
 
@@ -254,6 +276,7 @@ function App() {
       return { ...level, walls: [...walls, newWall] };
     });
     setSelectedWallId(id);
+    setSelectedSpaceId(null);
     setInspectorView("context");
     setDraftStart(end);
   };
@@ -265,6 +288,7 @@ function App() {
       if (!hit || hit.t <= 0.02 || hit.t >= 0.98) return;
       commitActiveLevel((level) => ({ ...level, walls: splitWallsAtPoint(level.walls, hit.point) }));
       setSelectedWallId(null);
+      setSelectedSpaceId(null);
       setInspectorView("context");
       setMode("select");
       return;
@@ -274,6 +298,7 @@ function App() {
     if (!draftStart) {
       setDraftStart(snapped);
       setSelectedWallId(null);
+      setSelectedSpaceId(null);
       return;
     }
     createWallBetween(draftStart, snapped);
@@ -292,7 +317,10 @@ function App() {
     setMode(nextMode);
     setInspectorView("context");
     setDraftStart(null);
-    if (nextMode !== "select") setSelectedWallId(null);
+    if (nextMode !== "select") {
+      setSelectedWallId(null);
+      setSelectedSpaceId(null);
+    }
   };
 
   const finishDrawing = () => {
@@ -302,6 +330,7 @@ function App() {
 
   const openLevelCreator = () => {
     setSelectedWallId(null);
+    setSelectedSpaceId(null);
     setInspectorView("create-level");
     setMode("select");
     setDraftStart(null);
@@ -315,6 +344,7 @@ function App() {
     commit((current) => ({ ...current, levels: [...current.levels, level] }));
     setActiveLevelId(level.id);
     setSelectedWallId(null);
+    setSelectedSpaceId(null);
     setInspectorView("context");
     setMode("select");
     setDraftStart(null);
@@ -323,6 +353,7 @@ function App() {
   const selectLevel = (id: string) => {
     setActiveLevelId(id);
     setSelectedWallId(null);
+    setSelectedSpaceId(null);
     setInspectorView("context");
     setMode("select");
     setDraftStart(null);
@@ -330,6 +361,7 @@ function App() {
 
   const openWallDefaults = () => {
     setSelectedWallId(null);
+    setSelectedSpaceId(null);
     setInspectorView("defaults");
     setMode("select");
     setDraftStart(null);
@@ -440,7 +472,7 @@ function App() {
           levels={project.levels}
           activeLevelId={activeLevel.id}
           walls={activeLevel.walls}
-          roomCount={rooms.length}
+          roomCount={activeSpaces.length}
           selectedWallId={selectedWallId}
           defaultsOpen={inspectorView === "defaults"}
           draftStart={draftStart}
@@ -448,7 +480,7 @@ function App() {
           drawAngle={drawAngle}
           language={language}
           onModeChange={handleModeChange}
-          onSelectWall={(id) => { setSelectedWallId(id); setInspectorView("context"); setMode("select"); setDraftStart(null); }}
+          onSelectWall={(id) => { setSelectedWallId(id); setSelectedSpaceId(null); setInspectorView("context"); setMode("select"); setDraftStart(null); }}
           onOpenWallDefaults={openWallDefaults}
           onSelectLevel={selectLevel}
           onAddLevel={openLevelCreator}
@@ -457,18 +489,24 @@ function App() {
           onCreateVector={createVectorSegment}
           onFinishDrawing={finishDrawing}
         />
-        <PlanCanvas
+        <SpacePlanCanvas
           walls={activeLevel.walls}
           lowerWalls={lowerWalls}
-          rooms={rooms}
+          spaces={activeSpaces}
           selectedWallId={selectedWallId}
+          selectedSpaceId={selectedSpaceId}
           mode={mode}
           zoom={zoom}
           draftStart={draftStart}
           northAngle={northAngle}
           language={language}
-          onSelectWall={(id) => { setSelectedWallId(id); setInspectorView("context"); }}
-          onClearSelection={() => { if (inspectorView === "context") setSelectedWallId(null); }}
+          onSelectWall={(id) => { setSelectedWallId(id); setSelectedSpaceId(null); setInspectorView("context"); }}
+          onSelectSpace={(id) => { setSelectedSpaceId(id); setSelectedWallId(null); setInspectorView("context"); }}
+          onClearSelection={() => {
+            if (inspectorView !== "context") return;
+            setSelectedWallId(null);
+            setSelectedSpaceId(null);
+          }}
           onCanvasPoint={handleCanvasPoint}
           onZoomChange={setZoom}
           onNorthAngleChange={setNorthAngle}
@@ -486,6 +524,13 @@ function App() {
             defaults={wallDefaults}
             language={language}
             onChange={setWallDefaults}
+          />
+        ) : selectedSpace ? (
+          <SpaceInspector
+            space={selectedSpace}
+            level={activeLevel}
+            language={language}
+            onUpdateSpace={updateSelectedSpace}
           />
         ) : selectedWall?.type === "virtual" ? (
           <VirtualWallInspector
@@ -513,7 +558,7 @@ function App() {
         ) : (
           <LevelInspector
             level={activeLevel}
-            rooms={rooms}
+            rooms={activeSpaces}
             language={language}
             onUpdateLevel={(patch) => commitActiveLevel((level) => ({ ...level, ...patch }))}
             onUpdateSurfaceLayer={updateSurfaceLayer}
@@ -522,7 +567,7 @@ function App() {
           />
         )}
       </div>
-      <StatusBar walls={activeLevel.walls} rooms={rooms} levelName={activeLevel.name} language={language} />
+      <StatusBar walls={activeLevel.walls} rooms={activeSpaces} levelName={activeLevel.name} language={language} />
     </div>
   );
 }
