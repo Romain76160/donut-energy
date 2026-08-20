@@ -9,12 +9,14 @@ type Props = {
   walls: Wall[];
   roomCount: number;
   selectedWallId: string | null;
+  defaultsOpen: boolean;
   draftStart: Point | null;
   drawLength: number;
   drawAngle: number;
   language: Language;
   onModeChange: (mode: EditorMode) => void;
   onSelectWall: (id: string) => void;
+  onOpenWallDefaults: () => void;
   onSelectLevel: (id: string) => void;
   onAddLevel: () => void;
   onDrawLengthChange: (value: number) => void;
@@ -32,12 +34,14 @@ export function ModelSidebar({
   walls,
   roomCount,
   selectedWallId,
+  defaultsOpen,
   draftStart,
   drawLength,
   drawAngle,
   language,
   onModeChange,
   onSelectWall,
+  onOpenWallDefaults,
   onSelectLevel,
   onAddLevel,
   onDrawLengthChange,
@@ -46,6 +50,7 @@ export function ModelSidebar({
   onFinishDrawing,
 }: Props) {
   const text = translations[language];
+  const defaultWallsLabel = language === "fr" ? "Murs par défaut" : "Default walls";
 
   return (
     <aside className="model-sidebar" aria-label={text.buildingModel}>
@@ -101,7 +106,7 @@ export function ModelSidebar({
           {walls.map((wall) => (
             <button
               key={wall.id}
-              className={`${selectedWallId === wall.id ? "selected" : ""} ${wall.type}`}
+              className={`${selectedWallId === wall.id && !defaultsOpen ? "selected" : ""} ${wall.type}`}
               onClick={() => onSelectWall(wall.id)}
             >
               <span className="wall-line-icon" />
@@ -110,6 +115,10 @@ export function ModelSidebar({
             </button>
           ))}
         </div>
+
+        <button type="button" className={`default-walls-button${defaultsOpen ? " active" : ""}`} onClick={onOpenWallDefaults}>
+          <WallIcon /> {defaultWallsLabel}
+        </button>
 
         <div className="room-summary">
           <strong>{text.rooms}</strong>
