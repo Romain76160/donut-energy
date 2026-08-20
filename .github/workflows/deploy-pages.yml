@@ -7,6 +7,7 @@ on:
       - agent/fr-en-language-toggle
       - recover/work-advanced
       - feature/direct-wall-editing
+      - feature/level-vertical-structure
   workflow_dispatch:
 
 permissions:
