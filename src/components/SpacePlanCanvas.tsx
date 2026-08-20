@@ -3,6 +3,7 @@ import { boundarySpace, buildWallAdjacencies, wallSideAnchor, type WallBoundaryR
 import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "../icons";
 import { snapPoint, wallOrientationFromNorth } from "../geometry";
 import { localeFor, orientationLabel, translations, type Language } from "../i18n";
+import { emitOpeningPlanMove } from "../openingEditing";
 import { formatNumber, wallLength, type EditorMode, type Point, type Space, type Wall } from "../model";
 import { openingCenterPoint, openingTypeLabel, wallOpenings } from "../openings";
 import "../north-control.css";
@@ -33,6 +34,13 @@ type Props = {
   onCanvasPoint: (point: Point) => void;
   onZoomChange: (zoom: number) => void;
   onNorthAngleChange: (angle: number) => void;
+};
+
+type OpeningDragState = {
+  wallId: string;
+  openingId: string;
+  pointerId: number;
+  position: number;
 };
 
 const isDrawing = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
@@ -66,6 +74,7 @@ export function SpacePlanCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const northDialRef = useRef<HTMLDivElement>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
+  const [openingDrag, setOpeningDrag] = useState<OpeningDragState | null>(null);
   const scale = BASE_SCALE * zoom;
   const text = translations[language];
   const locale = localeFor(language);
@@ -82,13 +91,26 @@ export function SpacePlanCanvas({
     y: CENTER.y + point.y * scale,
   });
 
-  const eventToWorld = (clientX: number, clientY: number) => {
+  const clientToWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
     const rect = svg.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * VIEW_WIDTH;
     const y = ((clientY - rect.top) / rect.height) * VIEW_HEIGHT;
-    return snapPoint({ x: (x - CENTER.x) / scale, y: (y - CENTER.y) / scale }, walls);
+    return { x: (x - CENTER.x) / scale, y: (y - CENTER.y) / scale };
+  };
+
+  const eventToWorld = (clientX: number, clientY: number) => snapPoint(clientToWorld(clientX, clientY), walls);
+
+  const openingPositionFromPointer = (wall: Wall, width: number, clientX: number, clientY: number) => {
+    const point = clientToWorld(clientX, clientY);
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const length = Math.hypot(dx, dy);
+    if (length <= 0.001) return 0;
+    const raw = ((point.x - wall.start.x) * dx + (point.y - wall.start.y) * dy) / length;
+    const half = Math.min(length, width) / 2;
+    return Math.max(half, Math.min(length - half, raw));
   };
 
   const setNorthFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -126,7 +148,7 @@ export function SpacePlanCanvas({
           <h1>{text.planTitle}</h1>
           {isDrawing(mode) ? <p>{mode === "draw-virtual" ? (language === "fr" ? "Tracez une limite virtuelle pour séparer les pièces sans créer de paroi physique." : "Draw a virtual boundary to separate rooms without creating a physical wall.") : text.drawHint}</p> : null}
           {mode === "node" ? <p>{text.nodeHint}</p> : null}
-          {mode === "select" ? <p>{language === "fr" ? "Cliquez dans une pièce pour modifier son nom, son usage et ses paramètres thermiques." : "Click inside a room to edit its name, use and thermal settings."}</p> : null}
+          {mode === "select" ? <p>{language === "fr" ? "Cliquez dans une pièce pour modifier son nom, son usage et ses paramètres thermiques. Les ouvertures d’un mur sélectionné sont déplaçables directement." : "Click inside a room to edit its name, use and thermal settings. Openings on a selected wall can be dragged directly."}</p> : null}
         </div>
         <div className="north-control">
           <div
@@ -271,12 +293,15 @@ export function SpacePlanCanvas({
             : { x: 1, y: 0 };
           const normalScreen = { x: -tangent.y, y: tangent.x };
           const openingMarkers = wallOpenings(wall).map((opening) => {
-            const centerWorld = openingCenterPoint(wall, opening);
-            const half = opening.width / 2;
+            const displayedOpening = openingDrag?.wallId === wall.id && openingDrag.openingId === opening.id
+              ? { ...opening, position: openingDrag.position }
+              : opening;
+            const centerWorld = openingCenterPoint(wall, displayedOpening);
+            const half = displayedOpening.width / 2;
             const a = project({ x: centerWorld.x - tangent.x * half, y: centerWorld.y - tangent.y * half });
             const b = project({ x: centerWorld.x + tangent.x * half, y: centerWorld.y + tangent.y * half });
             const center = project(centerWorld);
-            return { opening, a, b, center };
+            return { opening: displayedOpening, a, b, center };
           });
           return (
             <g
@@ -290,17 +315,58 @@ export function SpacePlanCanvas({
             >
               <line className="wall-hitbox" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
               <line className="wall-line" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
-              {openingMarkers.map(({ opening, a, b, center }) => (
-                <g className={`wall-opening-marker ${opening.type}`} key={opening.id}>
-                  <line className="opening-mask" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
-                  <line className="opening-symbol" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
-                  {selected ? (
-                    <text x={center.x + normalScreen.x * 14} y={center.y + normalScreen.y * 14} textAnchor="middle">
-                      {openingTypeLabel(opening.type, language)}
-                    </text>
-                  ) : null}
-                </g>
-              ))}
+              {openingMarkers.map(({ opening, a, b, center }) => {
+                const dragging = openingDrag?.wallId === wall.id && openingDrag.openingId === opening.id;
+                const draggable = selected && mode === "select";
+                return (
+                  <g
+                    className={`wall-opening-marker ${opening.type}${draggable ? " draggable" : ""}${dragging ? " dragging" : ""}`}
+                    key={opening.id}
+                    onClick={(event) => {
+                      if (draggable) event.stopPropagation();
+                    }}
+                    onPointerDown={(event) => {
+                      if (!draggable) return;
+                      event.stopPropagation();
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      setOpeningDrag({ wallId: wall.id, openingId: opening.id, pointerId: event.pointerId, position: opening.position });
+                    }}
+                    onPointerMove={(event) => {
+                      if (!openingDrag || openingDrag.wallId !== wall.id || openingDrag.openingId !== opening.id || openingDrag.pointerId !== event.pointerId) return;
+                      event.stopPropagation();
+                      const position = openingPositionFromPointer(wall, opening.width, event.clientX, event.clientY);
+                      setOpeningDrag((current) => current ? { ...current, position } : current);
+                    }}
+                    onPointerUp={(event) => {
+                      if (!openingDrag || openingDrag.wallId !== wall.id || openingDrag.openingId !== opening.id || openingDrag.pointerId !== event.pointerId) return;
+                      event.stopPropagation();
+                      const position = openingPositionFromPointer(wall, opening.width, event.clientX, event.clientY);
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                      emitOpeningPlanMove({ wallId: wall.id, openingId: opening.id, position });
+                      setOpeningDrag(null);
+                    }}
+                    onPointerCancel={(event) => {
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                      setOpeningDrag(null);
+                    }}
+                  >
+                    <line className="opening-mask" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                    <line className="opening-symbol" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                    {selected ? (
+                      <>
+                        <text x={center.x + normalScreen.x * 14} y={center.y + normalScreen.y * 14} textAnchor="middle">
+                          {openingTypeLabel(opening.type, language)}
+                        </text>
+                        {dragging ? (
+                          <text className="opening-position-label" x={center.x - normalScreen.x * 16} y={center.y - normalScreen.y * 16} textAnchor="middle">
+                            {formatNumber(opening.position, 2, locale)} m
+                          </text>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </g>
+                );
+              })}
               <circle className="wall-node" cx={start.x} cy={start.y} r="7" />
               <circle className="wall-node" cx={end.x} cy={end.y} r="7" />
               <text x={midX + (horizontal ? 0 : 25)} y={midY + (horizontal ? -20 : 4)} textAnchor="middle">
