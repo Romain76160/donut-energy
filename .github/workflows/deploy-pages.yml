@@ -36,6 +36,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Write build info
+        run: |
+          cat > dist/build-info.json <<EOF
+          {
+            "sha": "${GITHUB_SHA}",
+            "runId": "${GITHUB_RUN_ID}",
+            "runNumber": "${GITHUB_RUN_NUMBER}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          touch dist/.nojekyll
+
       - name: Test
         run: npm test
 
@@ -46,6 +58,9 @@ jobs:
           echo ""
           echo "===== dist/index.html ====="
           cat dist/index.html
+          echo ""
+          echo "===== dist/build-info.json ====="
+          cat dist/build-info.json
 
       - name: Configure Pages
         if: github.ref == 'refs/heads/main'
