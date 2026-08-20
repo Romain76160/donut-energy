@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Wall } from "./model";
 import { wallArea } from "./thermal";
-import { wallInclinationDeg, wallTopOffset, wallTrueHeight, type InclinedWall } from "./wallInclination";
+import {
+  normalizeWallSectionProfile,
+  wallInclinationDeg,
+  wallSectionTrueHeight,
+  wallTopOffset,
+  wallTrueHeight,
+  type InclinedWall,
+} from "./wallInclination";
 
 const baseWall: Wall = {
   id: "tilt-test",
@@ -34,5 +41,19 @@ describe("wall inclination", () => {
   it("uses the sign of the angle around 90 degrees for the top offset", () => {
     expect(wallTopOffset(2.8, 80)).toBeGreaterThan(0);
     expect(wallTopOffset(2.8, 100)).toBeLessThan(0);
+  });
+
+  it("uses every section point to calculate the true wall length", () => {
+    const wall: Wall = {
+      ...baseWall,
+      sectionProfile: [
+        { id: "s0", height: 0, offset: 0 },
+        { id: "s1", height: 1.4, offset: 0.5 },
+        { id: "s2", height: 2.8, offset: 0 },
+      ],
+    };
+    expect(normalizeWallSectionProfile(wall)).toHaveLength(3);
+    expect(wallSectionTrueHeight(wall)).toBeGreaterThan(2.8);
+    expect(wallArea(wall)).toBeGreaterThan(22.4);
   });
 });
