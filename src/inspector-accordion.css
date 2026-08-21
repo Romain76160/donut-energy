@@ -1,0 +1,120 @@
+.inspector-accordion {
+  margin: 8px 0;
+  border: 1px solid #dfe5eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: clip;
+}
+
+.inspector-accordion > summary {
+  position: relative;
+  min-height: 48px;
+  padding: 10px 42px 10px 12px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.inspector-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.inspector-accordion > summary:hover {
+  background: #f8fafc;
+}
+
+.inspector-accordion-title {
+  color: #344054;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.inspector-accordion > summary small {
+  color: #84909e;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.inspector-accordion > summary i {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  border: 1px solid #d5dde5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.inspector-accordion > summary i::before,
+.inspector-accordion > summary i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: #516174;
+  transform: translate(-50%, -50%);
+}
+
+.inspector-accordion > summary i::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.inspector-accordion[open] > summary {
+  border-bottom: 1px solid #edf0f3;
+  background: #fbfcfd;
+}
+
+.inspector-accordion[open] > summary i::after {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.inspector-accordion-body {
+  padding: 12px;
+}
+
+.inspector-accordion-body > .inspector-section,
+.inspector-accordion-body > .wall-type-library {
+  margin: 0;
+}
+
+.inspector-accordion-body > .inspector-section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.inspector-accordion-body > .inspector-section + .inspector-section {
+  margin-top: 12px;
+}
+
+.inspector-accordion-body .wall-type-library {
+  margin-bottom: 12px;
+}
+
+.inspector-subheading {
+  margin: 12px 0 7px;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.inspector-advanced-note {
+  margin: 0 0 10px;
+  color: #7a8796;
+  font-size: 9px;
+  line-height: 1.45;
+}
