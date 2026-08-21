@@ -26,6 +26,7 @@ import {
   type WallTypeDefinition,
 } from "../wallTypes";
 import "../wall-inspector-editing.css";
+import { InspectorAccordion } from "./InspectorAccordion";
 import { WallOpeningsEditor } from "./WallOpeningsEditor";
 import { WallProfileEditor } from "./WallProfileEditor";
 import { WallSectionView } from "./WallSectionView";
@@ -75,6 +76,37 @@ export function WallInspector({
   const profile = normalizeProfile(wall);
   const length = wallLength(wall);
   const currentWallTypeId = readWallTypeLink(wall.id);
+  const linkedType = currentWallTypeId ? wallTypes.find((type) => type.id === currentWallTypeId) ?? null : null;
+
+  const labels = language === "fr" ? {
+    geometry: "Géométrie",
+    geometryHint: `${formatNumber(length, 2, locale)} m · ${formatNumber(wall.height, 2, locale)} m de haut`,
+    construction: "Construction & matériaux",
+    constructionHint: linkedType ? `Lié à ${linkedType.name}` : `${wall.layers.length} couches`,
+    composition: "Composition actuelle",
+    openings: "Ouvertures",
+    openingsHint: `${wall.openings?.length ?? 0} ouverture${(wall.openings?.length ?? 0) > 1 ? "s" : ""}`,
+    performance: "Performances",
+    performanceHint: `U ${formatNumber(wallUValue(wall), 2, locale)} W/m²·K`,
+    advanced: "Avancé",
+    advancedHint: "Profils · inclinaisons · points",
+    advancedNote: "Les profils et inclinaisons modifient la géométrie verticale du mur. Ils sont regroupés ici pour garder l’inspecteur principal léger.",
+    profile: "Profil / élévation",
+  } : {
+    geometry: "Geometry",
+    geometryHint: `${formatNumber(length, 2, locale)} m · ${formatNumber(wall.height, 2, locale)} m high`,
+    construction: "Construction & materials",
+    constructionHint: linkedType ? `Linked to ${linkedType.name}` : `${wall.layers.length} layers`,
+    composition: "Current composition",
+    openings: "Openings",
+    openingsHint: `${wall.openings?.length ?? 0} opening${(wall.openings?.length ?? 0) === 1 ? "" : "s"}`,
+    performance: "Performance",
+    performanceHint: `U ${formatNumber(wallUValue(wall), 2, locale)} W/m²·K`,
+    advanced: "Advanced",
+    advancedHint: "Profiles · inclinations · points",
+    advancedNote: "Profiles and inclinations modify the wall's vertical geometry. They are grouped here to keep the main inspector compact.",
+    profile: "Profile / elevation",
+  };
 
   const detachWallType = () => {
     unlinkWallType(wall.id);
@@ -144,61 +176,112 @@ export function WallInspector({
   };
 
   return (
-    <aside className="inspector" aria-label={text.wallPropertiesAria}>
+    <aside className="inspector wall-inspector-compact" aria-label={text.wallPropertiesAria}>
       <h2>{text.wallProperties}</h2>
 
-      <div className="property-fields">
-        <label>
-          <span>{text.name}</span>
-          <input value={wall.name} onChange={(event) => onUpdateWall({ name: event.target.value })} />
-        </label>
-        <label>
-          <span>{text.wallType}</span>
-          <select value={wall.type} onChange={(event) => { detachWallType(); onUpdateWall({ type: event.target.value as WallType }); }}>
-            <option value="external">{text.external}</option>
-            <option value="internal">{text.internal}</option>
-          </select>
-        </label>
-        <label>
-          <span>{text.length}</span>
-          <div className="unit-input">
-            <input type="number" min="0.2" step="0.1" value={length.toFixed(2)} onChange={(event) => onUpdateLength(Number(event.target.value))} />
-            <b>m</b>
-          </div>
-        </label>
-        <label>
-          <span>{text.height}</span>
-          <div className="unit-input">
-            <input type="number" min="0.5" step="0.1" value={wall.height} onChange={(event) => changeHeight(Number(event.target.value))} />
-            <b>m</b>
-          </div>
-        </label>
-        <label>
-          <span>{text.orientation}</span>
-          <div className="orientation-readonly">
-            <strong>{wall.type === "internal" ? text.internal : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong>
-            <small>{wall.type === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{automaticLabel}</small>
-          </div>
-        </label>
-      </div>
-
-      <WallTypeLibrary
-        wall={wall}
-        types={wallTypes}
-        currentTypeId={currentWallTypeId}
-        language={language}
-        onChange={changeWallTypes}
-        onApply={applyLinkedWallType}
-        onDetach={detachWallType}
-      />
-
-      <div className="inspector-section profile-section">
-        <div className="section-title-row">
-          <h3>{text.profile}</h3>
-          <span>{formatNumber(wallArea(wall), 2, locale)} m²</span>
+      <InspectorAccordion title={labels.geometry} hint={labels.geometryHint} defaultOpen>
+        <div className="property-fields">
+          <label>
+            <span>{text.name}</span>
+            <input value={wall.name} onChange={(event) => onUpdateWall({ name: event.target.value })} />
+          </label>
+          <label>
+            <span>{text.wallType}</span>
+            <select value={wall.type} onChange={(event) => { detachWallType(); onUpdateWall({ type: event.target.value as WallType }); }}>
+              <option value="external">{text.external}</option>
+              <option value="internal">{text.internal}</option>
+            </select>
+          </label>
+          <label>
+            <span>{text.length}</span>
+            <div className="unit-input">
+              <input type="number" min="0.2" step="0.1" value={length.toFixed(2)} onChange={(event) => onUpdateLength(Number(event.target.value))} />
+              <b>m</b>
+            </div>
+          </label>
+          <label>
+            <span>{text.height}</span>
+            <div className="unit-input">
+              <input type="number" min="0.5" step="0.1" value={wall.height} onChange={(event) => changeHeight(Number(event.target.value))} />
+              <b>m</b>
+            </div>
+          </label>
+          <label>
+            <span>{text.orientation}</span>
+            <div className="orientation-readonly">
+              <strong>{wall.type === "internal" ? text.internal : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong>
+              <small>{wall.type === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{automaticLabel}</small>
+            </div>
+          </label>
         </div>
-        <p className="section-help">{language === "fr" ? "Édition directe : déplacez les points et modifiez les cotes sur le dessin." : "Direct editing: drag points and edit dimensions on the drawing."}</p>
+      </InspectorAccordion>
 
+      <InspectorAccordion title={labels.construction} hint={labels.constructionHint} defaultOpen>
+        <WallTypeLibrary
+          wall={wall}
+          types={wallTypes}
+          currentTypeId={currentWallTypeId}
+          language={language}
+          onChange={changeWallTypes}
+          onApply={applyLinkedWallType}
+          onDetach={detachWallType}
+        />
+
+        <div className="inspector-subheading">{labels.composition}</div>
+        <div className="layer-columns"><span>{text.material}</span><span>{text.thickness}</span></div>
+        <div className="layer-list">
+          {wall.layers.map((layer) => {
+            const displayedMaterial = materialLabel(layer.name, language);
+            return (
+              <div className="layer-row" key={layer.id}>
+                <span className="drag-dots" aria-hidden="true">⠿</span>
+                <span className="material-swatch" style={{ backgroundColor: layer.color }} />
+                <select
+                  aria-label={text.material}
+                  value={layer.name}
+                  onChange={(event) => {
+                    const material = MATERIALS.find((item) => item.name === event.target.value);
+                    if (material) { detachWallType(); onUpdateLayer(layer.id, material); }
+                  }}
+                >
+                  {MATERIALS.map((material) => <option key={material.name} value={material.name}>{materialLabel(material.name, language)}</option>)}
+                </select>
+                <div className="unit-input compact">
+                  <input aria-label={text.thicknessOf(displayedMaterial)} type="number" min="1" step="1" value={layer.thicknessMm} onChange={(event) => { detachWallType(); onUpdateLayer(layer.id, { thicknessMm: Math.max(1, Number(event.target.value)) }); }} />
+                  <b>mm</b>
+                </div>
+                <button className="icon-button" aria-label={text.deleteMaterial(displayedMaterial)} onClick={() => { detachWallType(); onRemoveLayer(layer.id); }} disabled={wall.layers.length === 1}><TrashIcon /></button>
+              </div>
+            );
+          })}
+        </div>
+        <button className="add-layer-button" onClick={() => { detachWallType(); onAddLayer(); }}><PlusIcon /> {text.addLayer}</button>
+      </InspectorAccordion>
+
+      <InspectorAccordion title={labels.openings} hint={labels.openingsHint}>
+        <WallOpeningsEditor
+          wall={wall}
+          language={language}
+          onChange={(openings) => onUpdateWall({ openings })}
+        />
+      </InspectorAccordion>
+
+      <InspectorAccordion title={labels.performance} hint={labels.performanceHint}>
+        <div className="inspector-section performance-section">
+          <dl className="performance-list">
+            <div><dt>R</dt><dd><strong>R = {formatNumber(wallResistance(wall), 2, locale)}</strong> m²·K/W</dd></div>
+            <div><dt>U</dt><dd><strong>U = {formatNumber(wallUValue(wall), 2, locale)}</strong> W/m²·K</dd></div>
+            <div><dt>□</dt><dd><strong>{language === "fr" ? "Surface brute" : "Gross area"} = {formatNumber(wallArea(wall), 2, locale)}</strong> m²</dd></div>
+            <div><dt>▣</dt><dd><strong>{language === "fr" ? "Ouvertures" : "Openings"} = {formatNumber(wallOpeningArea(wall), 2, locale)}</strong> m²</dd></div>
+            <div><dt>■</dt><dd><strong>{language === "fr" ? "Opaque" : "Opaque"} = {formatNumber(wallOpaqueArea(wall), 2, locale)}</strong> m²</dd></div>
+            <div><dt>H</dt><dd><strong>H = {formatNumber(wallTransmissionCoefficient(wall), 2, locale)}</strong> W/K</dd></div>
+          </dl>
+        </div>
+      </InspectorAccordion>
+
+      <InspectorAccordion title={labels.advanced} hint={labels.advancedHint}>
+        <p className="inspector-advanced-note">{labels.advancedNote}</p>
+        <div className="inspector-subheading">{labels.profile}</div>
         <button type="button" className="shape-library-launch" onClick={() => setShapeLibraryOpen(true)}>
           <span>
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h6v5H3zM11 4h6v5h-6zM3 11h6v5H3zM11 11h6v5h-6z" /></svg>
@@ -229,59 +312,9 @@ export function WallInspector({
           </div>
           <button className="add-layer-button" onClick={onAddProfilePoint}><PlusIcon /> {text.addProfilePoint}</button>
         </details>
-      </div>
 
-      <WallSectionView wall={wall} language={language} onUpdateWall={onUpdateWall} onHeightChange={changeHeight} />
-
-      <WallOpeningsEditor
-        wall={wall}
-        language={language}
-        onChange={(openings) => onUpdateWall({ openings })}
-      />
-
-      <div className="inspector-section">
-        <h3>{text.composition}</h3>
-        <div className="layer-columns"><span>{text.material}</span><span>{text.thickness}</span></div>
-        <div className="layer-list">
-          {wall.layers.map((layer) => {
-            const displayedMaterial = materialLabel(layer.name, language);
-            return (
-              <div className="layer-row" key={layer.id}>
-                <span className="drag-dots" aria-hidden="true">⠿</span>
-                <span className="material-swatch" style={{ backgroundColor: layer.color }} />
-                <select
-                  aria-label={text.material}
-                  value={layer.name}
-                  onChange={(event) => {
-                    const material = MATERIALS.find((item) => item.name === event.target.value);
-                    if (material) { detachWallType(); onUpdateLayer(layer.id, material); }
-                  }}
-                >
-                  {MATERIALS.map((material) => <option key={material.name} value={material.name}>{materialLabel(material.name, language)}</option>)}
-                </select>
-                <div className="unit-input compact">
-                  <input aria-label={text.thicknessOf(displayedMaterial)} type="number" min="1" step="1" value={layer.thicknessMm} onChange={(event) => { detachWallType(); onUpdateLayer(layer.id, { thicknessMm: Math.max(1, Number(event.target.value)) }); }} />
-                  <b>mm</b>
-                </div>
-                <button className="icon-button" aria-label={text.deleteMaterial(displayedMaterial)} onClick={() => { detachWallType(); onRemoveLayer(layer.id); }} disabled={wall.layers.length === 1}><TrashIcon /></button>
-              </div>
-            );
-          })}
-        </div>
-        <button className="add-layer-button" onClick={() => { detachWallType(); onAddLayer(); }}><PlusIcon /> {text.addLayer}</button>
-      </div>
-
-      <div className="inspector-section performance-section">
-        <h3>{text.performances}</h3>
-        <dl className="performance-list">
-          <div><dt>R</dt><dd><strong>R = {formatNumber(wallResistance(wall), 2, locale)}</strong> m²·K/W</dd></div>
-          <div><dt>U</dt><dd><strong>U = {formatNumber(wallUValue(wall), 2, locale)}</strong> W/m²·K</dd></div>
-          <div><dt>□</dt><dd><strong>{language === "fr" ? "Surface brute" : "Gross area"} = {formatNumber(wallArea(wall), 2, locale)}</strong> m²</dd></div>
-          <div><dt>▣</dt><dd><strong>{language === "fr" ? "Ouvertures" : "Openings"} = {formatNumber(wallOpeningArea(wall), 2, locale)}</strong> m²</dd></div>
-          <div><dt>■</dt><dd><strong>{language === "fr" ? "Opaque" : "Opaque"} = {formatNumber(wallOpaqueArea(wall), 2, locale)}</strong> m²</dd></div>
-          <div><dt>H</dt><dd><strong>H = {formatNumber(wallTransmissionCoefficient(wall), 2, locale)}</strong> W/K</dd></div>
-        </dl>
-      </div>
+        <WallSectionView wall={wall} language={language} onUpdateWall={onUpdateWall} onHeightChange={changeHeight} />
+      </InspectorAccordion>
 
       {shapeLibraryOpen ? <WallShapeLibrary language={language} onApply={applyPreset} onClose={() => setShapeLibraryOpen(false)} /> : null}
     </aside>
