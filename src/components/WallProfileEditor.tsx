@@ -10,6 +10,11 @@ type Props = {
   onLengthChange: (length: number) => void;
 };
 
+type DragState = {
+  id: string;
+  pointerId: number;
+};
+
 const WIDTH = 312;
 const HEIGHT = 190;
 const PADDING_X = 22;
@@ -22,7 +27,7 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
   const sourceProfile = useMemo(() => normalizeProfile(wall), [wall]);
   const [draft, setDraft] = useState<ProfilePoint[]>(sourceProfile);
   const draftRef = useRef<ProfilePoint[]>(sourceProfile);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addMode, setAddMode] = useState(false);
   const locale = localeFor(language);
@@ -33,9 +38,9 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
   };
 
   useEffect(() => {
-    if (draggingId) return;
+    if (drag) return;
     setDraftSafe(sourceProfile);
-  }, [sourceProfile, draggingId]);
+  }, [sourceProfile, drag]);
 
   const maxHeight = Math.max(3.4, wall.height * 1.75, ...draft.map((point) => point.height * 1.18));
   const plotWidth = WIDTH - PADDING_X * 2;
@@ -58,8 +63,8 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
     const svg = svgRef.current;
     if (!svg) return { position: length / 2, height: wall.height };
     const rect = svg.getBoundingClientRect();
-    const x = (clientX - rect.left) / rect.width * WIDTH;
-    const y = (clientY - rect.top) / rect.height * HEIGHT;
+    const x = (clientX - rect.left) / Math.max(1, rect.width) * WIDTH;
+    const y = (clientY - rect.top) / Math.max(1, rect.height) * HEIGHT;
     return {
       position: Math.max(0.01, Math.min(length - 0.01, (x - PADDING_X) / plotWidth * length)),
       height: Math.max(0.1, Math.min(maxHeight, (GROUND_Y - y) / plotHeight * maxHeight)),
@@ -96,6 +101,12 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
     commit(next);
   };
 
+  const finishDrag = (id: string) => {
+    setDrag(null);
+    setSelectedId(id);
+    commit(draftRef.current);
+  };
+
   const selected = draft.find((point) => point.id === selectedId) ?? null;
   const selectedCanvas = selected ? toCanvas(selected) : null;
   const selectedIndex = selected ? draft.findIndex((point) => point.id === selected.id) : -1;
@@ -104,7 +115,7 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
   const labels = language === "fr" ? {
     add: "Ajouter un point",
     adding: "Cliquez dans le dessin",
-    help: "Activez Ajouter un point, puis cliquez dans le dessin. Glissez ensuite les points et modifiez les cotes directement.",
+    help: "Cliquez-glissez directement un point orange. Les extrémités se déplacent verticalement ; les points intermédiaires se déplacent librement.",
     position: "Position",
     height: "Hauteur",
     delete: "Supprimer",
@@ -112,7 +123,7 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
   } : {
     add: "Add point",
     adding: "Click in the drawing",
-    help: "Enable Add point, then click the drawing. Drag points and edit dimensions directly.",
+    help: "Click and drag an orange point directly. End points move vertically; intermediate points move freely.",
     position: "Position",
     height: "Height",
     delete: "Delete",
@@ -139,17 +150,6 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
             if (addMode) addPointAt(event.clientX, event.clientY);
             else setSelectedId(null);
           }}
-          onPointerMove={(event) => {
-            if (!draggingId) return;
-            updatePoint(draggingId, pointerToProfile(event.clientX, event.clientY));
-          }}
-          onPointerUp={(event) => {
-            if (!draggingId) return;
-            event.currentTarget.releasePointerCapture?.(event.pointerId);
-            setDraggingId(null);
-            commit(draftRef.current);
-          }}
-          onPointerCancel={() => setDraggingId(null)}
         >
           <line className="profile-ground" x1={PADDING_X} y1={GROUND_Y} x2={WIDTH - PADDING_X} y2={GROUND_Y} />
           <polygon className="profile-fill" points={polygon} />
@@ -166,22 +166,47 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
             );
           })}
 
-          {coordinates.map((point) => (
-            <circle
-              key={point.id}
-              className={`profile-handle${selectedId === point.id ? " selected" : ""}`}
-              cx={point.x}
-              cy={point.y}
-              r="7"
-              onClick={(event) => { event.stopPropagation(); setSelectedId(point.id); }}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                setSelectedId(point.id);
-                setDraggingId(point.id);
-                svgRef.current?.setPointerCapture?.(event.pointerId);
-              }}
-            />
-          ))}
+          {coordinates.map((point) => {
+            const active = drag?.id === point.id;
+            return (
+              <circle
+                key={point.id}
+                className={`profile-handle${selectedId === point.id ? " selected" : ""}${active ? " dragging" : ""}`}
+                cx={point.x}
+                cy={point.y}
+                r="7"
+                onClick={(event) => { event.stopPropagation(); setSelectedId(point.id); }}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSelectedId(point.id);
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDrag({ id: point.id, pointerId: event.pointerId });
+                }}
+                onPointerMove={(event) => {
+                  if (!drag || drag.id !== point.id || drag.pointerId !== event.pointerId) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  updatePoint(point.id, pointerToProfile(event.clientX, event.clientY));
+                }}
+                onPointerUp={(event) => {
+                  if (!drag || drag.id !== point.id || drag.pointerId !== event.pointerId) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  updatePoint(point.id, pointerToProfile(event.clientX, event.clientY));
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                  finishDrag(point.id);
+                }}
+                onPointerCancel={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                  setDrag(null);
+                  setDraftSafe(sourceProfile);
+                }}
+              />
+            );
+          })}
         </svg>
 
         <div className="profile-total-length" title={labels.length}>
@@ -189,7 +214,7 @@ export function WallProfileEditor({ wall, language, onProfileChange, onLengthCha
           <span>m</span>
         </div>
 
-        {selected && selectedCanvas ? (
+        {selected && selectedCanvas && !drag ? (
           <div className="profile-point-popover" style={{ left: `${selectedCanvas.x / WIDTH * 100}%`, top: `${Math.max(4, selectedCanvas.y / HEIGHT * 100)}%` }} onPointerDown={(event) => event.stopPropagation()}>
             {!selectedIsEndpoint ? <label><span>{labels.position}</span><input type="number" min="0.01" max={length - 0.01} step="0.05" value={selected.position.toFixed(2)} onChange={(event) => updatePoint(selected.id, { position: Number(event.target.value) }, true)} /></label> : null}
             <label><span>{labels.height}</span><input type="number" min="0.1" step="0.05" value={selected.height.toFixed(2)} onChange={(event) => updatePoint(selected.id, { height: Number(event.target.value) }, true)} /></label>
