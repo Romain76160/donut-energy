@@ -82,13 +82,23 @@
   stroke: #ee7a2d;
   stroke-width: 2.5;
   cursor: grab;
+  touch-action: none;
+  transition: r 120ms ease, stroke-width 120ms ease, fill 120ms ease;
 }
 
-.profile-editor-svg .profile-handle:active {
+.profile-editor-svg .profile-handle:hover {
+  stroke-width: 3.5;
+}
+
+.profile-editor-svg .profile-handle:active,
+.profile-editor-svg .profile-handle.dragging {
   cursor: grabbing;
+  fill: #ee7a2d;
+  stroke: #fff;
+  stroke-width: 3.5;
 }
 
-.profile-editor-svg .profile-handle.selected {
+.profile-editor-svg .profile-handle.selected:not(.dragging) {
   fill: #fff1e7;
   stroke-width: 3.5;
 }

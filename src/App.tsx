@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { EditableSpacePlanCanvas } from "./components/EditableSpacePlanCanvas";
 import { LevelCreationPanel, type NewLevelDefinition } from "./components/LevelCreationPanel";
 import { LevelInspector } from "./components/LevelInspector";
 import { ModelSidebar } from "./components/ModelSidebar";
 import { SpaceInspector } from "./components/SpaceInspector";
-import { SpacePlanCanvas } from "./components/SpacePlanCanvas";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
 import { VirtualWallInspector } from "./components/VirtualWallInspector";
@@ -35,6 +35,7 @@ import {
   type WallLayer,
   type WallType,
 } from "./model";
+import { moveConnectedNode } from "./nodeEditing";
 import { syncProjectSpaces } from "./spaces";
 import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaults } from "./wallDefaults";
 import {
@@ -250,6 +251,11 @@ function App() {
       ...current,
       spaces: current.spaces.map((space) => space.id === selectedSpaceId ? { ...space, ...patch } : space),
     }));
+  };
+
+  const movePlanNode = (from: Point, to: Point) => {
+    if (!activeLevel || pointsEqual(from, to, 0.0005)) return;
+    commitActiveLevel((level) => ({ ...level, walls: moveConnectedNode(level.walls, from, to) }));
   };
 
   const updateWallLength = (length: number) => {
@@ -543,7 +549,7 @@ function App() {
           onCreateVector={createVectorSegment}
           onFinishDrawing={finishDrawing}
         />
-        <SpacePlanCanvas
+        <EditableSpacePlanCanvas
           walls={activeLevel.walls}
           lowerWalls={lowerWalls}
           spaces={activeSpaces}
@@ -562,6 +568,7 @@ function App() {
             setSelectedSpaceId(null);
           }}
           onCanvasPoint={handleCanvasPoint}
+          onMoveNode={movePlanNode}
           onZoomChange={setZoom}
           onNorthAngleChange={setNorthAngle}
         />
