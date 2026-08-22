@@ -1,4 +1,5 @@
 .tools .tool-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 36px;
   gap: 4px;
@@ -32,4 +33,105 @@
   background: var(--orange-soft);
   border-color: #f3c6aa;
   color: #a84c14;
+}
+
+.wall-default-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 232px;
+  padding: 11px;
+  border: 1px solid #dbe2e8;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(20, 32, 51, .14);
+  color: #33465e;
+}
+
+.wall-default-tooltip::before {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: -6px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid #dbe2e8;
+  border-top: 1px solid #dbe2e8;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.wall-default-tooltip > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #273b54;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.wall-default-tooltip-current,
+.wall-default-tooltip-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.wall-default-tooltip-current {
+  margin-bottom: 9px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: #f7f9fb;
+}
+
+.wall-default-tooltip-current span,
+.wall-default-tooltip-meta span,
+.wall-default-tooltip label > span {
+  color: #788596;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.wall-default-tooltip-current b {
+  min-width: 0;
+  overflow: hidden;
+  color: #30445f;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wall-default-tooltip label {
+  display: grid;
+  gap: 5px;
+}
+
+.wall-default-tooltip select {
+  width: 100%;
+  height: 31px;
+  border: 1px solid #d8dfe6;
+  border-radius: 6px;
+  background: #fff;
+  color: #26394f;
+  padding: 0 8px;
+  font-size: 10px;
+  outline: none;
+}
+
+.wall-default-tooltip select:focus {
+  border-color: #7f9bb9;
+  box-shadow: 0 0 0 2px rgba(71, 120, 184, .1);
+}
+
+.wall-default-tooltip-meta {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #edf0f3;
+}
+
+.wall-default-tooltip-meta b {
+  color: #30445f;
+  font-size: 10px;
 }

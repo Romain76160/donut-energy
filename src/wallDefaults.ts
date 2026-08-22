@@ -20,6 +20,7 @@ export type WallDefaults = {
 };
 
 const STORAGE_KEY = "donut-energy-wall-defaults";
+let runtimeDefaults: WallDefaults | null = null;
 
 const standardTemplate = (type: PhysicalWallType): WallDefaultTemplate => ({
   label: type === "external" ? "Mur extérieur standard" : "Mur intérieur standard",
@@ -50,18 +51,26 @@ const normalizeTemplate = (value: unknown, type: PhysicalWallType): WallDefaultT
 export const loadWallDefaults = (): WallDefaults => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialWallDefaults();
-    const parsed = JSON.parse(raw) as Partial<WallDefaults>;
-    return {
-      external: normalizeTemplate(parsed.external, "external"),
-      internal: normalizeTemplate(parsed.internal, "internal"),
-    };
+    const defaults = raw
+      ? (() => {
+          const parsed = JSON.parse(raw) as Partial<WallDefaults>;
+          return {
+            external: normalizeTemplate(parsed.external, "external"),
+            internal: normalizeTemplate(parsed.internal, "internal"),
+          };
+        })()
+      : initialWallDefaults();
+    runtimeDefaults = defaults;
+    return defaults;
   } catch {
-    return initialWallDefaults();
+    const defaults = initialWallDefaults();
+    runtimeDefaults = defaults;
+    return defaults;
   }
 };
 
 export const saveWallDefaults = (defaults: WallDefaults) => {
+  runtimeDefaults = defaults;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
   } catch {
@@ -77,7 +86,7 @@ export const wallTemplateFromWall = (wall: Wall): WallDefaultTemplate => ({
 });
 
 export const wallTemplateLayers = (defaults: WallDefaults, type: PhysicalWallType) =>
-  cloneLayers(defaults[type].layers);
+  cloneLayers((runtimeDefaults ?? defaults)[type].layers);
 
 export const resetWallTemplate = (type: PhysicalWallType) => standardTemplate(type);
 
