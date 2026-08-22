@@ -1,6 +1,14 @@
+import { useEffect, useRef, useState } from "react";
 import { PlusIcon, PointerIcon, WallIcon } from "../icons";
 import { translations, type Language } from "../i18n";
-import type { EditorMode, Level, Point, Wall } from "../model";
+import type { EditorMode, Level, PhysicalWallType, Point, Wall } from "../model";
+import {
+  loadWallDefaults,
+  resetWallTemplate,
+  saveWallDefaults,
+  wallTemplateFromWall,
+  wallTemplateThickness,
+} from "../wallDefaults";
 import "../model-sidebar-tools.css";
 import "../virtual-walls.css";
 
@@ -43,7 +51,6 @@ export function ModelSidebar({
   language,
   onModeChange,
   onSelectWall,
-  onOpenWallDefaults,
   onSelectLevel,
   onAddLevel,
   onDrawLengthChange,
@@ -54,19 +61,83 @@ export function ModelSidebar({
   const text = translations[language];
   const virtualLabel = language === "fr" ? "Séparation virtuelle" : "Virtual boundary";
   const voidLabel = language === "fr" ? "vide" : "open";
-  const externalDefaultLabel = language === "fr" ? "Choisir le mur extérieur par défaut" : "Choose default external wall";
-  const internalDefaultLabel = language === "fr" ? "Choisir le mur intérieur par défaut" : "Choose default internal wall";
+  const externalDefaultLabel = language === "fr" ? "Mur extérieur par défaut" : "Default external wall";
+  const internalDefaultLabel = language === "fr" ? "Mur intérieur par défaut" : "Default internal wall";
+  const standardLabel = language === "fr" ? "Configuration standard" : "Standard configuration";
+  const currentLabel = language === "fr" ? "Actuel" : "Current";
+  const thicknessLabel = language === "fr" ? "Épaisseur" : "Thickness";
+  const chooseLabel = language === "fr" ? "Choisir" : "Choose";
+  const [openDefaultType, setOpenDefaultType] = useState<PhysicalWallType | null>(null);
+  const [sidebarDefaults, setSidebarDefaults] = useState(loadWallDefaults);
+  const toolsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openDefaultType) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!toolsRef.current?.contains(event.target as Node)) setOpenDefaultType(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenDefaultType(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openDefaultType]);
+
   const wallTypeLabel = (wall: Wall) => wall.type === "external"
     ? text.external
     : wall.type === "internal"
       ? text.internal
       : language === "fr" ? "Virtuel" : "Virtual";
 
+  const setDefaultWall = (type: PhysicalWallType, wallId: string) => {
+    const wall = walls.find((candidate) => candidate.id === wallId && candidate.type === type);
+    const next = {
+      ...sidebarDefaults,
+      [type]: wall ? wallTemplateFromWall(wall) : resetWallTemplate(type),
+    };
+    setSidebarDefaults(next);
+    saveWallDefaults(next);
+  };
+
+  const defaultTooltip = (type: PhysicalWallType) => {
+    if (openDefaultType !== type) return null;
+    const template = sidebarDefaults[type];
+    const candidates = walls.filter((wall) => wall.type === type);
+    const title = type === "external" ? externalDefaultLabel : internalDefaultLabel;
+    return (
+      <div className="wall-default-tooltip" role="dialog" aria-label={title}>
+        <strong>{title}</strong>
+        <div className="wall-default-tooltip-current">
+          <span>{currentLabel}</span>
+          <b>{template.sourceWallName ?? standardLabel}</b>
+        </div>
+        <label>
+          <span>{chooseLabel}</span>
+          <select
+            value={template.sourceWallId && candidates.some((wall) => wall.id === template.sourceWallId) ? template.sourceWallId : ""}
+            onChange={(event) => setDefaultWall(type, event.target.value)}
+          >
+            <option value="">{standardLabel}</option>
+            {candidates.map((wall) => <option key={wall.id} value={wall.id}>{wall.name}</option>)}
+          </select>
+        </label>
+        <div className="wall-default-tooltip-meta">
+          <span>{thicknessLabel}</span>
+          <b>{wallTemplateThickness(template)} mm</b>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <aside className="model-sidebar" aria-label={text.buildingModel}>
       <div className="sidebar-scroll">
         <h2>{text.model}</h2>
-        <div className="tools">
+        <div className="tools" ref={toolsRef}>
           <button className={mode === "select" ? "active" : ""} onClick={() => onModeChange("select")}>
             <PointerIcon /> {text.select}
           </button>
@@ -77,13 +148,15 @@ export function ModelSidebar({
             </button>
             <button
               type="button"
-              className={`tool-default-action${defaultsOpen ? " active" : ""}`}
-              onClick={onOpenWallDefaults}
+              className={`tool-default-action${openDefaultType === "external" ? " active" : ""}`}
+              onClick={() => setOpenDefaultType((current) => current === "external" ? null : "external")}
               aria-label={externalDefaultLabel}
               title={externalDefaultLabel}
+              aria-expanded={openDefaultType === "external"}
             >
               <WallIcon />
             </button>
+            {defaultTooltip("external")}
           </div>
 
           <div className="tool-row">
@@ -92,13 +165,15 @@ export function ModelSidebar({
             </button>
             <button
               type="button"
-              className={`tool-default-action${defaultsOpen ? " active" : ""}`}
-              onClick={onOpenWallDefaults}
+              className={`tool-default-action${openDefaultType === "internal" ? " active" : ""}`}
+              onClick={() => setOpenDefaultType((current) => current === "internal" ? null : "internal")}
               aria-label={internalDefaultLabel}
               title={internalDefaultLabel}
+              aria-expanded={openDefaultType === "internal"}
             >
               <WallIcon />
             </button>
+            {defaultTooltip("internal")}
           </div>
 
           <button className={`virtual-tool ${mode === "draw-virtual" ? "active" : ""}`} onClick={() => onModeChange("draw-virtual")}>
