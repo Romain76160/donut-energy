@@ -87,6 +87,18 @@ export function ModelSidebar({
     };
   }, [openDefaultType]);
 
+  useEffect(() => {
+    if (!drawingMode(mode)) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpenDefaultType(null);
+      onFinishDrawing();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mode, onFinishDrawing]);
+
   const wallTypeLabel = (wall: Wall) => wall.type === "external"
     ? text.external
     : wall.type === "internal"
