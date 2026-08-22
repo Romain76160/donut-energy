@@ -3,8 +3,9 @@ import { PlusIcon, TrashIcon } from "../icons";
 import { localeFor, type Language } from "../i18n";
 import { OPENING_PLAN_MOVE_EVENT, type OpeningPlanMoveDetail } from "../openingEditing";
 import { removeOpeningDepth, writeOpeningDepth } from "../openingDepth";
+import { fitOpeningToWallProfile } from "../openingProfileFit";
 import { formatNumber, wallLength, type OpeningType, type Wall, type WallOpening } from "../model";
-import { defaultOpening, normalizeOpening, openingArea, openingTypeLabel, wallOpenings } from "../openings";
+import { normalizeOpening, openingArea, openingTypeLabel, wallOpenings } from "../openings";
 import {
   applyWindowTypeToOpening,
   linkWindowType,
@@ -15,6 +16,7 @@ import {
   type WindowTypeDefinition,
 } from "../windowTypes";
 import "../openings.css";
+import "../joinery-placement.css";
 import { OpeningDepthEditor } from "./OpeningDepthEditor";
 import { OpeningElevationEditor } from "./OpeningElevationEditor";
 import { WindowTypeLibrary, WindowTypePicker } from "./WindowTypeLibrary";
@@ -30,14 +32,20 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
   const openings = wallOpenings(wall);
   const length = wallLength(wall);
   const [windowTypes, setWindowTypes] = useState<WindowTypeDefinition[]>(loadWindowTypes);
+  const [placementType, setPlacementType] = useState<OpeningType | null>(null);
+  const [placementWindowTypeId, setPlacementWindowTypeId] = useState("");
   const [, setLinkRevision] = useState(0);
   const labels = language === "fr" ? {
-    title: "OUVERTURES",
-    help: "Glissez les ouvertures sur le plan ou dans l’élévation. Les fenêtres peuvent être liées à un type réutilisable : toute modification du type met à jour ses instances.",
+    title: "MENUISERIES",
+    help: "Choisissez une menuiserie puis cliquez dans l’élévation du mur pour la poser. Les menuiseries restent automatiquement sous le profil réel du mur.",
+    place: "Poser une menuiserie",
     addWindow: "Fenêtre",
     addDoor: "Porte",
     addGlazedDoor: "Baie vitrée",
-    none: "Aucune ouverture sur ce mur.",
+    windowType: "Type de fenêtre",
+    standardWindow: "Fenêtre standard",
+    placing: "Mode pose actif — cliquez dans le mur · Échap pour terminer",
+    none: "Aucune menuiserie sur ce mur.",
     name: "Nom",
     type: "Type",
     position: "Centre depuis le début",
@@ -47,14 +55,18 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     uValue: "U ouverture",
     solar: "Facteur solaire",
     area: "Surface",
-    delete: "Supprimer l’ouverture",
+    delete: "Supprimer la menuiserie",
   } : {
-    title: "OPENINGS",
-    help: "Drag openings on the plan or elevation. Windows can be linked to reusable types: editing a type updates its instances.",
+    title: "JOINERY",
+    help: "Choose joinery then click in the wall elevation to place it. Joinery is automatically kept below the actual wall profile.",
+    place: "Place joinery",
     addWindow: "Window",
     addDoor: "Door",
     addGlazedDoor: "Glazed door",
-    none: "No opening on this wall.",
+    windowType: "Window type",
+    standardWindow: "Standard window",
+    placing: "Placement mode active — click in the wall · Escape to finish",
+    none: "No joinery on this wall.",
     name: "Name",
     type: "Type",
     position: "Centre from wall start",
@@ -64,10 +76,12 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     uValue: "Opening U-value",
     solar: "Solar factor",
     area: "Area",
-    delete: "Delete opening",
+    delete: "Delete joinery",
   };
 
-  const emit = (next: WallOpening[]) => onChange(next.map((opening) => normalizeOpening(opening, wall)));
+  const emit = (next: WallOpening[]) => onChange(next.map((opening) =>
+    fitOpeningToWallProfile(normalizeOpening(opening, wall), wall)
+  ));
 
   useEffect(() => {
     const handlePlanMove = (event: Event) => {
@@ -81,16 +95,34 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
     return () => window.removeEventListener(OPENING_PLAN_MOVE_EVENT, handlePlanMove);
   }, [wall, onChange]);
 
+  useEffect(() => {
+    if (!placementType) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setPlacementType(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [placementType]);
+
   const changeWindowTypes = (next: WindowTypeDefinition[]) => {
     setWindowTypes(next);
     saveWindowTypes(next);
+    if (placementWindowTypeId && !next.some((type) => type.id === placementWindowTypeId)) {
+      setPlacementWindowTypeId("");
+    }
   };
 
-  const addOpening = (type: OpeningType) => {
-    const next = defaultOpening(type, wall, openings.length);
-    if (openings.length > 0 && length > next.width) {
-      const candidate = (length * (openings.length + 1)) / (openings.length + 2);
-      next.position = Math.max(next.width / 2, Math.min(length - next.width / 2, candidate));
+  const placeOpening = (candidate: WallOpening) => {
+    let next = fitOpeningToWallProfile(normalizeOpening(candidate, wall), wall);
+    if (next.type === "window" && placementWindowTypeId) {
+      const selectedType = windowTypes.find((type) => type.id === placementWindowTypeId);
+      if (selectedType) {
+        next = fitOpeningToWallProfile(normalizeOpening(applyWindowTypeToOpening(next, selectedType), wall), wall);
+        linkWindowType(wall.id, next.id, selectedType.id);
+        writeOpeningDepth(wall, next.id, { mode: selectedType.depthMode, frameDepthMm: selectedType.frameDepthMm });
+      }
     }
     emit([...openings, next]);
   };
@@ -106,7 +138,9 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
   const applyWindowType = (openingId: string, type: WindowTypeDefinition) => {
     linkWindowType(wall.id, openingId, type.id);
     setLinkRevision((value) => value + 1);
-    emit(openings.map((opening) => opening.id === openingId ? applyWindowTypeToOpening(opening, type) : opening));
+    emit(openings.map((opening) => opening.id === openingId
+      ? fitOpeningToWallProfile(normalizeOpening(applyWindowTypeToOpening(opening, type), wall), wall)
+      : opening));
     writeOpeningDepth(wall, openingId, { mode: type.depthMode, frameDepthMm: type.frameDepthMm });
   };
 
@@ -123,25 +157,56 @@ export function WallOpeningsEditor({ wall, language, onChange }: Props) {
 
   const totalArea = openings.reduce((total, opening) => total + openingArea(opening), 0);
 
+  const placementButton = (type: OpeningType, label: string) => (
+    <button
+      type="button"
+      className={placementType === type ? "active" : ""}
+      onClick={() => setPlacementType((current) => current === type ? null : type)}
+      aria-pressed={placementType === type}
+    >
+      <PlusIcon /> {label}
+    </button>
+  );
+
   return (
-    <section className="inspector-section wall-openings-section">
+    <section className="inspector-section wall-openings-section joinery-placement-section">
       <div className="section-title-row">
         <h3>{labels.title}</h3>
         <span>{openings.length} · {formatNumber(totalArea, 2, locale)} m²</span>
       </div>
       <p className="section-help">{labels.help}</p>
 
-      <div className="opening-add-row">
-        <button type="button" onClick={() => addOpening("window")}><PlusIcon /> {labels.addWindow}</button>
-        <button type="button" onClick={() => addOpening("door")}><PlusIcon /> {labels.addDoor}</button>
-        <button type="button" onClick={() => addOpening("glazed-door")}><PlusIcon /> {labels.addGlazedDoor}</button>
+      <div className="joinery-placement-toolbar">
+        <strong>{labels.place}</strong>
+        <div className="opening-add-row joinery-placement-buttons">
+          {placementButton("window", labels.addWindow)}
+          {placementButton("door", labels.addDoor)}
+          {placementButton("glazed-door", labels.addGlazedDoor)}
+        </div>
+        {placementType === "window" ? (
+          <label className="joinery-type-select">
+            <span>{labels.windowType}</span>
+            <select value={placementWindowTypeId} onChange={(event) => setPlacementWindowTypeId(event.target.value)}>
+              <option value="">{labels.standardWindow}</option>
+              {windowTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+            </select>
+          </label>
+        ) : null}
+        {placementType ? <div className="joinery-placement-hint">{labels.placing}</div> : null}
       </div>
+
+      <OpeningElevationEditor
+        wall={wall}
+        openings={openings}
+        language={language}
+        placementType={placementType}
+        onPlace={placeOpening}
+        onChange={emit}
+      />
 
       <WindowTypeLibrary types={windowTypes} language={language} onChange={changeWindowTypes} />
 
-      {openings.length > 0 ? (
-        <OpeningElevationEditor wall={wall} openings={openings} language={language} onChange={emit} />
-      ) : <div className="opening-empty">{labels.none}</div>}
+      {!openings.length && !placementType ? <div className="opening-empty">{labels.none}</div> : null}
 
       <div className="opening-list">
         {openings.map((opening, index) => (
