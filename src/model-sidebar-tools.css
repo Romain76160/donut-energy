@@ -1,0 +1,35 @@
+.tools .tool-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 4px;
+}
+
+.tools .tool-row > button:first-child {
+  min-width: 0;
+}
+
+.tools .tool-default-action {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  justify-content: center;
+  border-color: #e1e7ed;
+  background: #f8fafc;
+  color: #52657c;
+}
+
+.tools .tool-default-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+.tools .tool-default-action:hover {
+  background: #eef3f7;
+  border-color: #ccd7e1;
+}
+
+.tools .tool-default-action.active {
+  background: var(--orange-soft);
+  border-color: #f3c6aa;
+  color: #a84c14;
+}
