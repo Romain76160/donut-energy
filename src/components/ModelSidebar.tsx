@@ -1,6 +1,7 @@
 import { PlusIcon, PointerIcon, WallIcon } from "../icons";
 import { translations, type Language } from "../i18n";
 import type { EditorMode, Level, Point, Wall } from "../model";
+import "../model-sidebar-tools.css";
 import "../virtual-walls.css";
 
 type Props = {
@@ -51,9 +52,10 @@ export function ModelSidebar({
   onFinishDrawing,
 }: Props) {
   const text = translations[language];
-  const defaultWallsLabel = language === "fr" ? "Choisir les murs par défaut" : "Choose default walls";
   const virtualLabel = language === "fr" ? "Séparation virtuelle" : "Virtual boundary";
   const voidLabel = language === "fr" ? "vide" : "open";
+  const externalDefaultLabel = language === "fr" ? "Choisir le mur extérieur par défaut" : "Choose default external wall";
+  const internalDefaultLabel = language === "fr" ? "Choisir le mur intérieur par défaut" : "Choose default internal wall";
   const wallTypeLabel = (wall: Wall) => wall.type === "external"
     ? text.external
     : wall.type === "internal"
@@ -68,12 +70,37 @@ export function ModelSidebar({
           <button className={mode === "select" ? "active" : ""} onClick={() => onModeChange("select")}>
             <PointerIcon /> {text.select}
           </button>
-          <button className={mode === "draw-external" ? "active" : ""} onClick={() => onModeChange("draw-external")}>
-            <WallIcon /> {text.drawExternal}
-          </button>
-          <button className={mode === "draw-internal" ? "active" : ""} onClick={() => onModeChange("draw-internal")}>
-            <WallIcon /> {text.drawInternal}
-          </button>
+
+          <div className="tool-row">
+            <button className={mode === "draw-external" ? "active" : ""} onClick={() => onModeChange("draw-external")}>
+              <WallIcon /> {text.drawExternal}
+            </button>
+            <button
+              type="button"
+              className={`tool-default-action${defaultsOpen ? " active" : ""}`}
+              onClick={onOpenWallDefaults}
+              aria-label={externalDefaultLabel}
+              title={externalDefaultLabel}
+            >
+              <WallIcon />
+            </button>
+          </div>
+
+          <div className="tool-row">
+            <button className={mode === "draw-internal" ? "active" : ""} onClick={() => onModeChange("draw-internal")}>
+              <WallIcon /> {text.drawInternal}
+            </button>
+            <button
+              type="button"
+              className={`tool-default-action${defaultsOpen ? " active" : ""}`}
+              onClick={onOpenWallDefaults}
+              aria-label={internalDefaultLabel}
+              title={internalDefaultLabel}
+            >
+              <WallIcon />
+            </button>
+          </div>
+
           <button className={`virtual-tool ${mode === "draw-virtual" ? "active" : ""}`} onClick={() => onModeChange("draw-virtual")}>
             <WallIcon /> {virtualLabel}
           </button>
@@ -113,18 +140,7 @@ export function ModelSidebar({
         </div>
 
         <div className="sidebar-divider" />
-        <div className="sidebar-section-heading">
-          <span>{text.walls} ({walls.length})</span>
-          <button
-            type="button"
-            className={`tiny-add${defaultsOpen ? " active" : ""}`}
-            onClick={onOpenWallDefaults}
-            aria-label={defaultWallsLabel}
-            title={defaultWallsLabel}
-          >
-            <WallIcon />
-          </button>
-        </div>
+        <div className="wall-list-heading">{text.walls} ({walls.length})</div>
         <div className="wall-list">
           {walls.map((wall) => (
             <button
