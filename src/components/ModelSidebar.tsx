@@ -1,6 +1,7 @@
 import { PlusIcon, PointerIcon, WallIcon } from "../icons";
 import { translations, type Language } from "../i18n";
-import type { EditorMode, Level, PhysicalWallType, Point, Wall } from "../model";
+import type { EditorMode, Level, Point, Wall } from "../model";
+import "../model-sidebar-tools.css";
 import "../virtual-walls.css";
 
 type Props = {
@@ -11,14 +12,13 @@ type Props = {
   roomCount: number;
   selectedWallId: string | null;
   defaultsOpen: boolean;
-  defaultWallType: PhysicalWallType | null;
   draftStart: Point | null;
   drawLength: number;
   drawAngle: number;
   language: Language;
   onModeChange: (mode: EditorMode) => void;
   onSelectWall: (id: string) => void;
-  onOpenWallDefaults: (type: PhysicalWallType) => void;
+  onOpenWallDefaults: () => void;
   onSelectLevel: (id: string) => void;
   onAddLevel: () => void;
   onDrawLengthChange: (value: number) => void;
@@ -37,7 +37,6 @@ export function ModelSidebar({
   roomCount,
   selectedWallId,
   defaultsOpen,
-  defaultWallType,
   draftStart,
   drawLength,
   drawAngle,
@@ -78,8 +77,8 @@ export function ModelSidebar({
             </button>
             <button
               type="button"
-              className={`tool-default-action${defaultsOpen && defaultWallType === "external" ? " active" : ""}`}
-              onClick={() => onOpenWallDefaults("external")}
+              className={`tool-default-action${defaultsOpen ? " active" : ""}`}
+              onClick={onOpenWallDefaults}
               aria-label={externalDefaultLabel}
               title={externalDefaultLabel}
             >
@@ -93,8 +92,8 @@ export function ModelSidebar({
             </button>
             <button
               type="button"
-              className={`tool-default-action${defaultsOpen && defaultWallType === "internal" ? " active" : ""}`}
-              onClick={() => onOpenWallDefaults("internal")}
+              className={`tool-default-action${defaultsOpen ? " active" : ""}`}
+              onClick={onOpenWallDefaults}
               aria-label={internalDefaultLabel}
               title={internalDefaultLabel}
             >
