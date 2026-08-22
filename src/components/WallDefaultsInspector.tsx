@@ -13,6 +13,7 @@ type Props = {
   walls: Wall[];
   defaults: WallDefaults;
   language: Language;
+  focusType?: PhysicalWallType | null;
   onChange: (defaults: WallDefaults) => void;
 };
 
@@ -104,30 +105,48 @@ function DefaultCard({
   );
 }
 
-export function WallDefaultsInspector({ walls, defaults, language, onChange }: Props) {
-  const title = language === "fr" ? "MURS PAR DÉFAUT" : "DEFAULT WALLS";
+export function WallDefaultsInspector({ walls, defaults, language, focusType = null, onChange }: Props) {
+  const title = language === "fr"
+    ? focusType === "external"
+      ? "MUR EXTÉRIEUR PAR DÉFAUT"
+      : focusType === "internal"
+        ? "MUR INTÉRIEUR PAR DÉFAUT"
+        : "MURS PAR DÉFAUT"
+    : focusType === "external"
+      ? "DEFAULT EXTERNAL WALL"
+      : focusType === "internal"
+        ? "DEFAULT INTERNAL WALL"
+        : "DEFAULT WALLS";
   const intro = language === "fr"
-    ? "Choisis une composition de référence pour chaque type. Le profil, la hauteur et l’inclinaison restent propres à chaque mur ; seule la composition multicouche est reprise automatiquement."
-    : "Choose a reference composition for each type. Profile, height and inclination remain wall-specific; only the multilayer composition is reused automatically.";
+    ? focusType
+      ? "Choisis la composition utilisée automatiquement quand tu dessines ce type de mur. La géométrie reste propre à chaque nouveau mur."
+      : "Choisis une composition de référence pour chaque type. Le profil, la hauteur et l’inclinaison restent propres à chaque mur ; seule la composition multicouche est reprise automatiquement."
+    : focusType
+      ? "Choose the composition automatically used when drawing this wall type. Geometry remains specific to each new wall."
+      : "Choose a reference composition for each type. Profile, height and inclination remain wall-specific; only the multilayer composition is reused automatically.";
 
   return (
     <aside className="inspector wall-defaults-inspector" aria-label={title}>
       <h2>{title}</h2>
       <p className="wall-defaults-intro">{intro}</p>
-      <DefaultCard
-        type="external"
-        walls={walls}
-        template={defaults.external}
-        language={language}
-        onChange={(external) => onChange({ ...defaults, external })}
-      />
-      <DefaultCard
-        type="internal"
-        walls={walls}
-        template={defaults.internal}
-        language={language}
-        onChange={(internal) => onChange({ ...defaults, internal })}
-      />
+      {(!focusType || focusType === "external") ? (
+        <DefaultCard
+          type="external"
+          walls={walls}
+          template={defaults.external}
+          language={language}
+          onChange={(external) => onChange({ ...defaults, external })}
+        />
+      ) : null}
+      {(!focusType || focusType === "internal") ? (
+        <DefaultCard
+          type="internal"
+          walls={walls}
+          template={defaults.internal}
+          language={language}
+          onChange={(internal) => onChange({ ...defaults, internal })}
+        />
+      ) : null}
     </aside>
   );
 }
