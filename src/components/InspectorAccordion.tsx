@@ -11,7 +11,11 @@ type Props = {
 
 export function InspectorAccordion({ title, hint, defaultOpen = false, children, className = "" }: Props) {
   return (
-    <details className={`inspector-accordion ${className}`.trim()} open={defaultOpen}>
+    <details
+      className={`inspector-accordion ${className}`.trim()}
+      name="wall-inspector-sections"
+      open={defaultOpen}
+    >
       <summary>
         <span className="inspector-accordion-title">{title}</span>
         {hint ? <small>{hint}</small> : null}
