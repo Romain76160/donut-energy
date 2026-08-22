@@ -51,7 +51,7 @@ export function ModelSidebar({
   onFinishDrawing,
 }: Props) {
   const text = translations[language];
-  const defaultWallsLabel = language === "fr" ? "Murs par défaut" : "Default walls";
+  const defaultWallsLabel = language === "fr" ? "Choisir les murs par défaut" : "Choose default walls";
   const virtualLabel = language === "fr" ? "Séparation virtuelle" : "Virtual boundary";
   const voidLabel = language === "fr" ? "vide" : "open";
   const wallTypeLabel = (wall: Wall) => wall.type === "external"
@@ -113,7 +113,18 @@ export function ModelSidebar({
         </div>
 
         <div className="sidebar-divider" />
-        <div className="wall-list-heading">{text.walls} ({walls.length})</div>
+        <div className="sidebar-section-heading">
+          <span>{text.walls} ({walls.length})</span>
+          <button
+            type="button"
+            className={`tiny-add${defaultsOpen ? " active" : ""}`}
+            onClick={onOpenWallDefaults}
+            aria-label={defaultWallsLabel}
+            title={defaultWallsLabel}
+          >
+            <WallIcon />
+          </button>
+        </div>
         <div className="wall-list">
           {walls.map((wall) => (
             <button
@@ -127,10 +138,6 @@ export function ModelSidebar({
             </button>
           ))}
         </div>
-
-        <button type="button" className={`default-walls-button${defaultsOpen ? " active" : ""}`} onClick={onOpenWallDefaults}>
-          <WallIcon /> {defaultWallsLabel}
-        </button>
 
         <div className="room-summary">
           <strong>{text.rooms}</strong>
