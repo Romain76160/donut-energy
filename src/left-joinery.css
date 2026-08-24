@@ -130,3 +130,13 @@
   stroke-linecap: square;
   pointer-events: none;
 }
+
+.opening-elevation-item .opening-design-divider {
+  stroke: #526a80;
+  stroke-width: 2.2px;
+  pointer-events: none;
+}
+
+.opening-elevation-item.selected .opening-design-divider {
+  stroke: #d86620;
+}
