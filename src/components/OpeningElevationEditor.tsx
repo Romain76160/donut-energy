@@ -1,17 +1,17 @@
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { localeFor, type Language } from "../i18n";
-import { formatNumber, normalizeProfile, wallLength, type OpeningType, type Wall, type WallOpening } from "../model";
+import { formatNumber, normalizeProfile, wallLength, type Wall, type WallOpening } from "../model";
 import { fitOpeningToWallProfile } from "../openingProfileFit";
-import { defaultOpening, normalizeOpening, openingTypeLabel } from "../openings";
+import { normalizeOpening, openingTypeLabel } from "../openings";
+import { loadWindowDesign } from "../windowDesigns";
+import { loadWindowTypes, readWindowTypeLink } from "../windowTypes";
+import "../left-joinery.css";
 import "../openings.css";
-import "../joinery-placement.css";
 
 type Props = {
   wall: Wall;
   openings: WallOpening[];
   language: Language;
-  placementType?: OpeningType | null;
-  onPlace?: (opening: WallOpening) => void;
   onChange: (openings: WallOpening[]) => void;
 };
 
@@ -27,11 +27,10 @@ const PADDING_X = 22;
 const PADDING_TOP = 18;
 const GROUND_Y = 156;
 
-export function OpeningElevationEditor({ wall, openings, language, placementType = null, onPlace, onChange }: Props) {
+export function OpeningElevationEditor({ wall, openings, language, onChange }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
-  const [placementPreview, setPlacementPreview] = useState<WallOpening | null>(null);
   const length = Math.max(0.2, wallLength(wall));
   const profile = useMemo(() => normalizeProfile(wall), [wall]);
   const displayed = drag?.draft ?? openings;
@@ -39,10 +38,7 @@ export function OpeningElevationEditor({ wall, openings, language, placementType
   const plotWidth = WIDTH - PADDING_X * 2;
   const plotHeight = GROUND_Y - PADDING_TOP;
   const locale = localeFor(language);
-  const placementTemplate = useMemo(
-    () => placementType ? defaultOpening(placementType, wall, openings.length) : null,
-    [placementType, wall.id, openings.length, length],
-  );
+  const windowTypes = loadWindowTypes();
 
   const xFor = (position: number) => PADDING_X + position / length * plotWidth;
   const yFor = (height: number) => GROUND_Y - height / maxHeight * plotHeight;
@@ -73,23 +69,6 @@ export function OpeningElevationEditor({ wall, openings, language, placementType
     return fitOpeningToWallProfile(normalizeOpening({ ...opening, position, sillHeight }, wall), wall);
   };
 
-  const pointerToPlacement = (clientX: number, clientY: number) => {
-    if (!placementTemplate) return null;
-    const point = pointerCoordinates(clientX, clientY);
-    if (!point) return null;
-    const half = Math.min(length, placementTemplate.width) / 2;
-    const rawPosition = (point.x - PADDING_X) / plotWidth * length;
-    const position = Math.max(half, Math.min(length - half, rawPosition));
-    const centerHeight = Math.max(0, Math.min(maxHeight, (GROUND_Y - point.y) / plotHeight * maxHeight));
-    const sillHeight = placementTemplate.type === "window"
-      ? Math.max(0, centerHeight - placementTemplate.height / 2)
-      : 0;
-    return fitOpeningToWallProfile(
-      normalizeOpening({ ...placementTemplate, position, sillHeight }, wall),
-      wall,
-    );
-  };
-
   const wallPolygon = [
     `${PADDING_X},${GROUND_Y}`,
     ...profile.map((point) => `${xFor(point.position)},${yFor(point.height)}`),
@@ -98,20 +77,14 @@ export function OpeningElevationEditor({ wall, openings, language, placementType
 
   const labels = language === "fr" ? {
     title: "Position des menuiseries",
-    help: placementType
-      ? "Cliquez dans le mur pour poser la menuiserie. Elle est automatiquement maintenue sous le profil du mur."
-      : "Glissez une menuiserie horizontalement. Pour une fenêtre, glissez aussi verticalement pour régler l’allège.",
+    help: "Glissez une menuiserie horizontalement. Pour une fenêtre, glissez aussi verticalement pour régler l’allège.",
     position: "Position",
     sill: "Allège",
-    placement: "Aperçu de pose",
   } : {
     title: "Joinery position",
-    help: placementType
-      ? "Click inside the wall to place the joinery. It is automatically kept below the wall profile."
-      : "Drag joinery horizontally. For a window, drag vertically to adjust the sill height too.",
+    help: "Drag joinery horizontally. For a window, drag vertically to adjust the sill height too.",
     position: "Position",
     sill: "Sill",
-    placement: "Placement preview",
   };
 
   const openingShape = (opening: WallOpening) => {
@@ -123,10 +96,16 @@ export function OpeningElevationEditor({ wall, openings, language, placementType
     return { normalized, x, width, top, bottom, height: Math.max(4, bottom - top) };
   };
 
-  const previewShape = placementPreview ? openingShape(placementPreview) : null;
+  const designForOpening = (opening: WallOpening) => {
+    if (opening.type !== "window") return null;
+    const typeId = readWindowTypeLink(wall.id, opening.id);
+    if (!typeId) return null;
+    const type = windowTypes.find((candidate) => candidate.id === typeId);
+    return type ? loadWindowDesign(type.id, type.operation) : null;
+  };
 
   return (
-    <div className={`opening-elevation-editor${placementType ? " placing" : ""}`}>
+    <div className="opening-elevation-editor">
       <div className="opening-elevation-head">
         <strong>{labels.title}</strong>
         <small>{labels.help}</small>
@@ -137,50 +116,26 @@ export function OpeningElevationEditor({ wall, openings, language, placementType
         className="opening-elevation-svg"
         role="img"
         aria-label={labels.title}
-        onPointerMove={(event) => {
-          if (!placementType) return;
-          setPlacementPreview(pointerToPlacement(event.clientX, event.clientY));
-        }}
-        onPointerLeave={() => setPlacementPreview(null)}
-        onClick={(event) => {
-          if (placementType && onPlace) {
-            const candidate = pointerToPlacement(event.clientX, event.clientY);
-            if (candidate) {
-              event.stopPropagation();
-              onPlace(candidate);
-              setSelectedId(candidate.id);
-            }
-            return;
-          }
-          setSelectedId(null);
-        }}
+        onClick={() => setSelectedId(null)}
       >
         <line className="opening-elevation-ground" x1={PADDING_X} y1={GROUND_Y} x2={WIDTH - PADDING_X} y2={GROUND_Y} />
         <polygon className="opening-elevation-wall" points={wallPolygon} />
         <polyline className="opening-elevation-profile" points={profile.map((point) => `${xFor(point.position)},${yFor(point.height)}`).join(" ")} />
 
-        {previewShape ? (
-          <g className={`opening-placement-preview ${previewShape.normalized.type}`} aria-label={labels.placement}>
-            <rect x={previewShape.x} y={previewShape.top} width={Math.max(5, previewShape.width)} height={previewShape.height} rx="2" />
-            <line x1={previewShape.x + 3} y1={previewShape.top + 3} x2={previewShape.x + Math.max(5, previewShape.width) - 3} y2={previewShape.top + previewShape.height - 3} />
-            <line x1={previewShape.x + Math.max(5, previewShape.width) - 3} y1={previewShape.top + 3} x2={previewShape.x + 3} y2={previewShape.top + previewShape.height - 3} />
-          </g>
-        ) : null}
-
         {displayed.map((opening) => {
           const { normalized, x, width, top, bottom, height } = openingShape(opening);
           const selected = selectedId === normalized.id;
+          const design = designForOpening(normalized);
+          const renderedWidth = Math.max(5, width);
           return (
             <g
               key={normalized.id}
               className={`opening-elevation-item ${normalized.type}${selected ? " selected" : ""}${drag?.id === normalized.id ? " dragging" : ""}`}
               onClick={(event) => {
                 event.stopPropagation();
-                if (placementType) return;
                 setSelectedId(normalized.id);
               }}
               onPointerDown={(event) => {
-                if (placementType) return;
                 event.stopPropagation();
                 event.currentTarget.setPointerCapture(event.pointerId);
                 setSelectedId(normalized.id);
@@ -207,13 +162,36 @@ export function OpeningElevationEditor({ wall, openings, language, placementType
                 setDrag(null);
               }}
             >
-              <rect x={x} y={top} width={Math.max(5, width)} height={height} rx="2" />
-              <line x1={x + 3} y1={top + 3} x2={x + Math.max(5, width) - 3} y2={top + height - 3} />
-              <line x1={x + Math.max(5, width) - 3} y1={top + 3} x2={x + 3} y2={top + height - 3} />
+              <rect x={x} y={top} width={renderedWidth} height={height} rx="2" />
+              {design?.dividers.map((divider) => divider.orientation === "vertical" ? (
+                <line
+                  key={divider.id}
+                  className="opening-design-divider"
+                  x1={x + renderedWidth * divider.position}
+                  y1={top + 2}
+                  x2={x + renderedWidth * divider.position}
+                  y2={top + height - 2}
+                />
+              ) : (
+                <line
+                  key={divider.id}
+                  className="opening-design-divider"
+                  x1={x + 2}
+                  y1={top + height * divider.position}
+                  x2={x + renderedWidth - 2}
+                  y2={top + height * divider.position}
+                />
+              ))}
+              {!design?.dividers.length ? (
+                <>
+                  <line x1={x + 3} y1={top + 3} x2={x + renderedWidth - 3} y2={top + height - 3} />
+                  <line x1={x + renderedWidth - 3} y1={top + 3} x2={x + 3} y2={top + height - 3} />
+                </>
+              ) : null}
               {selected ? (
                 <>
-                  <text x={x + Math.max(5, width) / 2} y={Math.max(12, top - 8)} textAnchor="middle">{openingTypeLabel(normalized.type, language)}</text>
-                  <text x={x + Math.max(5, width) / 2} y={Math.min(HEIGHT - 8, bottom + 15)} textAnchor="middle">
+                  <text x={x + renderedWidth / 2} y={Math.max(12, top - 8)} textAnchor="middle">{openingTypeLabel(normalized.type, language)}</text>
+                  <text x={x + renderedWidth / 2} y={Math.min(HEIGHT - 8, bottom + 15)} textAnchor="middle">
                     {labels.position} {formatNumber(normalized.position, 2, locale)} m{normalized.type === "window" ? ` · ${labels.sill} ${formatNumber(normalized.sillHeight, 2, locale)} m` : ""}
                   </text>
                 </>

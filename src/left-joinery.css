@@ -1,0 +1,142 @@
+.joinery-tool-block {
+  display: grid;
+  gap: 6px;
+}
+
+.tools .joinery-main-tool {
+  justify-content: flex-start;
+}
+
+.tools .joinery-main-tool .joinery-chevron {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: .7;
+}
+
+.joinery-left-panel {
+  display: grid;
+  gap: 8px;
+  margin: -2px 0 2px;
+  padding: 9px;
+  border: 1px solid #dde4ea;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.joinery-left-panel > strong {
+  color: #344a62;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.joinery-left-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.joinery-left-types button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 5px;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1.15;
+}
+
+.joinery-left-types button.active {
+  border-color: #f0a46f;
+  background: var(--orange-soft);
+  color: #a84c14;
+}
+
+.joinery-window-type-select {
+  display: grid;
+  gap: 4px;
+}
+
+.joinery-window-type-select span {
+  color: #738197;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.joinery-window-type-select select {
+  width: 100%;
+  height: 31px;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+  background: #fff;
+  color: #2f4359;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.joinery-left-hint {
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: #fff4eb;
+  color: #9b4a19;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.joinery-designer-launch {
+  width: 100%;
+  justify-content: center !important;
+  border-style: dashed !important;
+  background: #fff !important;
+  color: #435a73 !important;
+  font-size: 10px !important;
+}
+
+.joinery-placement-overlay {
+  pointer-events: none;
+}
+
+.joinery-placement-target {
+  pointer-events: all;
+  cursor: crosshair;
+}
+
+.joinery-placement-hit {
+  stroke: transparent;
+  stroke-width: 28px;
+}
+
+.joinery-placement-guide {
+  stroke: #e48645;
+  stroke-width: 3px;
+  stroke-dasharray: 7 5;
+  opacity: .28;
+  pointer-events: none;
+}
+
+.joinery-placement-target.active .joinery-placement-guide {
+  opacity: .72;
+}
+
+.joinery-placement-opening-mask {
+  stroke: #fff;
+  stroke-width: 12px;
+  pointer-events: none;
+}
+
+.joinery-placement-opening {
+  stroke: #e46f22;
+  stroke-width: 7px;
+  stroke-linecap: square;
+  pointer-events: none;
+}
+
+.opening-elevation-item .opening-design-divider {
+  stroke: #526a80;
+  stroke-width: 2.2px;
+  pointer-events: none;
+}
+
+.opening-elevation-item.selected .opening-design-divider {
+  stroke: #d86620;
+}

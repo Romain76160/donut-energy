@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import type { Point } from "../model";
+import { JoineryPlacementOverlay } from "./JoineryPlacementOverlay";
 import { PlanNodeHandles } from "./PlanNodeHandles";
 import { SpacePlanCanvas } from "./SpacePlanCanvas";
 
@@ -39,13 +40,21 @@ export function EditableSpacePlanCanvas({ onMoveNode, ...props }: Props) {
     <>
       <SpacePlanCanvas {...props} />
       {svg ? createPortal(
-        <PlanNodeHandles
-          walls={props.walls}
-          mode={props.mode}
-          project={project}
-          clientToWorld={clientToWorld}
-          onMoveNode={onMoveNode}
-        />,
+        <>
+          <PlanNodeHandles
+            walls={props.walls}
+            mode={props.mode}
+            project={project}
+            clientToWorld={clientToWorld}
+            onMoveNode={onMoveNode}
+          />
+          <JoineryPlacementOverlay
+            walls={props.walls}
+            project={project}
+            clientToWorld={clientToWorld}
+            onSelectWall={props.onSelectWall}
+          />
+        </>,
         svg,
       ) : null}
     </>
