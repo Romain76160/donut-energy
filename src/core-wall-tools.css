@@ -109,3 +109,15 @@
 .compact-create-panel {
   margin-top: 8px;
 }
+
+.canvas-panel.erase-mode .wall-shape {
+  cursor: crosshair;
+}
+
+.canvas-panel.erase-mode .wall-shape:hover .wall-line {
+  stroke: #cf5d5d;
+}
+
+.canvas-panel.move-mode .wall-shape {
+  opacity: .82;
+}
