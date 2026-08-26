@@ -219,9 +219,11 @@ function App() {
     const handleWallTypesChange = (event: Event) => {
       const detail = (event as CustomEvent<{ types?: WallTypeDefinition[] }>).detail;
       const types = Array.isArray(detail?.types) ? detail.types : loadWallTypes();
+      setWallTypes(types);
+      setCreateWallTypeId((current) => types.some((type) => type.id === current) ? current : types[0]?.id ?? "");
       setSaved(false);
       setHistory((current) => {
-        const next = syncProjectSpaces(syncProjectWallTypeInstances(current.present, types));
+        const next = autoClassifyProjectWalls(syncProjectSpaces(syncProjectWallTypeInstances(current.present, types)));
         if (next === current.present) return current;
         return { past: [...current.past.slice(-49), current.present], present: next, future: [] };
       });
@@ -261,6 +263,36 @@ function App() {
   const movePlanNode = (from: Point, to: Point) => {
     if (!activeLevel || pointsEqual(from, to, 0.0005)) return;
     commitActiveLevel((level) => ({ ...level, walls: moveConnectedNode(level.walls, from, to) }));
+  };
+
+  const movePlanWall = (wallId: string, delta: Point) => {
+    const wall = activeLevel?.walls.find((candidate) => candidate.id === wallId);
+    if (!wall || Math.hypot(delta.x, delta.y) < 0.001) return;
+    const nextStart = { x: wall.start.x + delta.x, y: wall.start.y + delta.y };
+    const nextEnd = { x: wall.end.x + delta.x, y: wall.end.y + delta.y };
+    commitActiveLevel((level) => {
+      let walls = moveConnectedNode(level.walls, wall.start, nextStart);
+      walls = moveConnectedNode(walls, wall.end, nextEnd);
+      return { ...level, walls };
+    });
+  };
+
+  const deleteWall = (wallId: string) => {
+    unlinkWallType(wallId);
+    commitActiveLevel((level) => ({ ...level, walls: level.walls.filter((wall) => wall.id !== wallId) }));
+    if (selectedWallId === wallId) setSelectedWallId(null);
+  };
+
+  const setSelectedWallVirtual = (virtual: boolean) => {
+    if (!selectedWall) return;
+    updateSelectedWall((wall) => {
+      if (virtual) return { ...wall, type: "virtual" };
+      const activeConstruction = wallTypes.find((type) => type.id === createWallTypeId) ?? wallTypes[0];
+      const layers = wall.layers.length
+        ? wall.layers
+        : activeConstruction ? cloneLayers(activeConstruction.layers) : externalWallLayers();
+      return { ...wall, type: "external", layers };
+    });
   };
 
   const updateWallLength = (length: number) => {
@@ -315,50 +347,42 @@ function App() {
   };
 
   const createWallBetween = (start: Point, end: Point) => {
-    if (!activeLevel || !drawingMode(mode)) return;
+    if (!activeLevel || mode !== "create") return;
     const length = Math.hypot(end.x - start.x, end.y - start.y);
     if (length < 0.15) return;
-    const type: WallType = mode === "draw-virtual" ? "virtual" : mode === "draw-internal" ? "internal" : "external";
+
+    const selectedConstruction = wallTypes.find((type) => type.id === createWallTypeId) ?? wallTypes[0];
     const id = createId();
-    const virtualCount = activeLevel.walls.filter((wall) => wall.type === "virtual").length + 1;
     const newWall: Wall = {
       id,
-      name: type === "virtual"
-        ? (language === "fr" ? `Séparation virtuelle ${virtualCount}` : `Virtual boundary ${virtualCount}`)
-        : translations[language].newWall(activeLevel.walls.length + 1),
+      name: translations[language].newWall(activeLevel.walls.length + 1),
       start,
       end,
       height: activeLevel.defaultHeight,
       orientation: orientationFromPoints(start, end),
-      type,
-      layers: type === "virtual" ? [] : wallTemplateLayers(wallDefaults, type),
+      // Exterior is only a temporary fallback while the surrounding geometry
+      // is open. normalizeProject() will infer the real classification.
+      type: "external",
+      layers: selectedConstruction ? cloneLayers(selectedConstruction.layers) : externalWallLayers(),
       profile: rectangleProfile(length, activeLevel.defaultHeight),
+      openings: [],
     };
+
+    if (selectedConstruction) linkWallType(id, selectedConstruction.id);
 
     commitActiveLevel((level) => {
       let walls = splitWallsAtPoint(level.walls, start);
       walls = splitWallsAtPoint(walls, end);
       return { ...level, walls: [...walls, newWall] };
     });
-    setSelectedWallId(id);
+    setSelectedWallId(null);
     setSelectedSpaceId(null);
     setInspectorView("context");
     setDraftStart(end);
   };
 
   const handleCanvasPoint = (point: Point) => {
-    if (!activeLevel) return;
-    if (mode === "node") {
-      const hit = nearestWallPoint(point, activeLevel.walls, 0.32);
-      if (!hit || hit.t <= 0.02 || hit.t >= 0.98) return;
-      commitActiveLevel((level) => ({ ...level, walls: splitWallsAtPoint(level.walls, hit.point) }));
-      setSelectedWallId(null);
-      setSelectedSpaceId(null);
-      setInspectorView("context");
-      setMode("select");
-      return;
-    }
-    if (!drawingMode(mode)) return;
+    if (!activeLevel || mode !== "create") return;
     const snapped = snapPoint(point, activeLevel.walls);
     if (!draftStart) {
       setDraftStart(snapped);
@@ -424,14 +448,6 @@ function App() {
     setDraftStart(null);
   };
 
-  const openWallDefaults = () => {
-    setSelectedWallId(null);
-    setSelectedSpaceId(null);
-    setInspectorView("defaults");
-    setMode("select");
-    setDraftStart(null);
-  };
-
   const undo = () => setHistory((current) => {
     const previous = current.past.at(-1);
     if (!previous) return current;
@@ -447,7 +463,6 @@ function App() {
   const save = () => {
     try {
       localStorage.setItem("donut-energy-project", JSON.stringify(project));
-      saveWallDefaults(wallDefaults);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1800);
     } catch {
