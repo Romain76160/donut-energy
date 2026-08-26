@@ -28,9 +28,8 @@ type Props = {
   onNorthAngleChange: (angle: number) => void;
 };
 
-const isDrawing = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
+const isDrawing = (mode: EditorMode) => mode === "create";
 const normalizeNorthAngle = (value: number) => ((value % 360) + 360) % 360;
-const previewType = (mode: EditorMode) => mode === "draw-internal" ? "internal" : mode === "draw-virtual" ? "virtual" : "external";
 
 export function PlanCanvas({
   walls,
@@ -94,12 +93,12 @@ export function PlanCanvas({
   }, [draftStart, pointer, scale, mode]);
 
   return (
-    <main className={`canvas-panel ${isDrawing(mode) ? "drawing" : ""} ${mode === "node" ? "node-mode" : ""}`}>
+    <main className={`canvas-panel ${isDrawing(mode) ? "drawing" : ""} ${mode === "move" ? "move-mode" : ""}`}>
       <div className="canvas-heading">
         <div>
           <h1>{text.planTitle}</h1>
-          {isDrawing(mode) ? <p>{mode === "draw-virtual" ? (language === "fr" ? "Tracez une limite virtuelle pour séparer les pièces sans créer de paroi physique." : "Draw a virtual boundary to separate rooms without creating a physical wall.") : text.drawHint}</p> : null}
-          {mode === "node" ? <p>{text.nodeHint}</p> : null}
+          {isDrawing(mode) ? <p>{language === "fr" ? "Tracez un mur. Sa classification sera calculée automatiquement." : "Draw a wall. Its classification will be calculated automatically."}</p> : null}
+          {mode === "move" ? <p>{language === "fr" ? "Déplacez un mur ou ses points." : "Move a wall or its points."}</p> : null}
         </div>
         <div className="north-control">
           <div
@@ -163,13 +162,13 @@ export function PlanCanvas({
         role="img"
         aria-label={text.planAria}
         onPointerMove={(event) => {
-          if (isDrawing(mode) || mode === "node") setPointer(eventToWorld(event.clientX, event.clientY));
+          if (isDrawing(mode)) setPointer(eventToWorld(event.clientX, event.clientY));
         }}
         onPointerLeave={() => setPointer(null)}
         onClick={(event) => {
-          if (isDrawing(mode) || mode === "node") {
+          if (isDrawing(mode)) {
             onCanvasPoint(eventToWorld(event.clientX, event.clientY));
-          } else {
+          } else if (mode === "select") {
             onClearSelection();
           }
         }}
@@ -234,7 +233,7 @@ export function PlanCanvas({
         })}
 
         {preview ? (
-          <g className={`wall-preview ${previewType(mode)}`}>
+          <g className="wall-preview external">
             <line x1={preview.start.x} y1={preview.start.y} x2={preview.end.x} y2={preview.end.y} />
             <circle cx={preview.start.x} cy={preview.start.y} r="8" />
             <circle cx={preview.end.x} cy={preview.end.y} r="8" />
@@ -249,10 +248,6 @@ export function PlanCanvas({
           return <circle className="draft-point" cx={point.x} cy={point.y} r="10" />;
         })() : null}
 
-        {pointer && mode === "node" ? (() => {
-          const point = project(pointer);
-          return <g className="node-preview"><circle cx={point.x} cy={point.y} r="11" /><path d={`M ${point.x - 6} ${point.y} H ${point.x + 6} M ${point.x} ${point.y - 6} V ${point.y + 6}`} /></g>;
-        })() : null}
       </svg>
 
       <div className="scale-indicator" aria-hidden="true">
