@@ -9,6 +9,7 @@ on:
       - feature/direct-wall-editing
       - feature/level-vertical-structure
       - feature/persistent-spaces
+      - feature/core-wall-tools-auto-classification
   pull_request:
     branches:
       - main
