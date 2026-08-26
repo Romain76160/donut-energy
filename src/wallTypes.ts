@@ -181,7 +181,8 @@ export const applyWallTypeToWall = (wall: Wall, type: WallTypeDefinition): Wall 
   if (wall.type === "virtual") return wall;
   return {
     ...wall,
-    type: type.physicalType,
+    // The library defines construction only. Interior/exterior classification
+    // is derived automatically from the building geometry.
     layers: cloneLayers(type.layers),
   };
 };
@@ -200,7 +201,7 @@ export const syncProjectWallTypeInstances = (project: Project, types: WallTypeDe
         const source = type.layers[index];
         return source && layer.name === source.name && layer.thicknessMm === source.thicknessMm && layer.conductivity === source.conductivity && layer.color === source.color;
       });
-      if (wall.type === type.physicalType && sameLayers) return wall;
+      if (sameLayers) return wall;
       levelChanged = true;
       return applyWallTypeToWall(wall, type);
     });
