@@ -60,3 +60,42 @@
 .numeric-point-editor[open] summary {
   margin-bottom: 8px;
 }
+
+.wall-auto-type-field {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+  border: 1px solid #dde5e0;
+  border-radius: 7px;
+  background: #f8faf8;
+}
+
+.wall-auto-type-field > span,
+.wall-auto-type-field small {
+  color: #7a887d;
+  font-size: 9px;
+}
+
+.wall-auto-type-field strong {
+  color: #405d47;
+  font-size: 11px;
+}
+
+.wall-virtual-toggle {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px dashed #87aab1;
+  border-radius: 7px;
+  background: #f4fafb;
+  color: #42727b;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.wall-virtual-toggle span {
+  font-size: 17px;
+  line-height: 1;
+}

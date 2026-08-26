@@ -7,9 +7,10 @@ type Props = {
   language: Language;
   onUpdateWall: (patch: Partial<Wall>) => void;
   onUpdateLength: (length: number) => void;
+  onSetVirtual: (value: boolean) => void;
 };
 
-export function VirtualWallInspector({ wall, language, onUpdateWall, onUpdateLength }: Props) {
+export function VirtualWallInspector({ wall, language, onUpdateWall, onUpdateLength, onSetVirtual }: Props) {
   const locale = localeFor(language);
   const labels = language === "fr" ? {
     title: "SÉPARATION VIRTUELLE",
@@ -21,6 +22,7 @@ export function VirtualWallInspector({ wall, language, onUpdateWall, onUpdateLen
     none: "Aucun",
     roomBoundary: "Limite de pièce",
     yes: "Oui",
+    restore: "Repasser en mur physique",
   } : {
     title: "VIRTUAL BOUNDARY",
     name: "Name",
@@ -31,6 +33,7 @@ export function VirtualWallInspector({ wall, language, onUpdateWall, onUpdateLen
     none: "None",
     roomBoundary: "Room boundary",
     yes: "Yes",
+    restore: "Restore physical wall",
   };
 
   return (
@@ -64,6 +67,10 @@ export function VirtualWallInspector({ wall, language, onUpdateWall, onUpdateLen
           </div>
         </label>
       </div>
+
+      <button type="button" className="virtual-wall-restore" onClick={() => onSetVirtual(false)}>
+        {labels.restore}
+      </button>
 
       <div className="virtual-wall-summary">
         <div><span>{labels.roomBoundary}</span><strong>{labels.yes}</strong></div>

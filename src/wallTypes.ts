@@ -27,14 +27,14 @@ type WallTypeLinks = Record<string, string>;
 const makeBuiltIns = (): WallTypeDefinition[] => [
   {
     id: "wall-external-standard",
-    name: "Mur extérieur standard",
+    name: "Mur isolé standard",
     physicalType: "external",
     layers: externalWallLayers(),
     builtIn: true,
   },
   {
     id: "wall-internal-standard",
-    name: "Cloison intérieure standard",
+    name: "Cloison légère standard",
     physicalType: "internal",
     layers: internalWallLayers(),
     builtIn: true,
@@ -157,7 +157,7 @@ export const saveWallTypes = (types: WallTypeDefinition[]) => {
 
 export const createWallType = (index = 0, physicalType: PhysicalWallType = "external"): WallTypeDefinition => normalizeWallType({
   id: createId(),
-  name: physicalType === "external" ? `Type mur extérieur ${index + 1}` : `Type cloison ${index + 1}`,
+  name: `Type de mur ${index + 1}`,
   physicalType,
   layers: fallbackLayers(physicalType),
 });
@@ -181,7 +181,8 @@ export const applyWallTypeToWall = (wall: Wall, type: WallTypeDefinition): Wall 
   if (wall.type === "virtual") return wall;
   return {
     ...wall,
-    type: type.physicalType,
+    // The library defines construction only. Interior/exterior classification
+    // is derived automatically from the building geometry.
     layers: cloneLayers(type.layers),
   };
 };
@@ -200,7 +201,7 @@ export const syncProjectWallTypeInstances = (project: Project, types: WallTypeDe
         const source = type.layers[index];
         return source && layer.name === source.name && layer.thicknessMm === source.thicknessMm && layer.conductivity === source.conductivity && layer.color === source.color;
       });
-      if (wall.type === type.physicalType && sameLayers) return wall;
+      if (sameLayers) return wall;
       levelChanged = true;
       return applyWallTypeToWall(wall, type);
     });

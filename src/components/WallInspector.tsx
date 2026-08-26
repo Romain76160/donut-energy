@@ -11,7 +11,6 @@ import {
   type Wall,
   type WallLayer,
   type WallOpening,
-  type WallType,
 } from "../model";
 import { wallArea, wallOpeningArea, wallOpaqueArea, wallResistance, wallTransmissionCoefficient, wallUValue } from "../thermal";
 import { normalizeWallSectionProfile } from "../wallInclination";
@@ -40,6 +39,7 @@ type Props = {
   automaticAzimuth: number | null;
   onUpdateWall: (patch: Partial<Wall>) => void;
   onUpdateLength: (length: number) => void;
+  onSetVirtual: (value: boolean) => void;
   onAddLayer: () => void;
   onUpdateLayer: (layerId: string, patch: Partial<WallLayer>) => void;
   onRemoveLayer: (layerId: string) => void;
@@ -56,6 +56,7 @@ export function WallInspector({
   automaticAzimuth,
   onUpdateWall,
   onUpdateLength,
+  onSetVirtual,
   onAddLayer,
   onUpdateLayer,
   onRemoveLayer,
@@ -92,6 +93,9 @@ export function WallInspector({
     advancedHint: "Profils · inclinaisons · points",
     advancedNote: "Les profils et inclinaisons modifient la géométrie verticale du mur. Ils sont regroupés ici pour garder l’inspecteur principal léger.",
     profile: "Profil / élévation",
+    classification: "Classification automatique",
+    virtual: "Passer en séparation virtuelle",
+    autoType: wall.type === "external" ? "Mur extérieur" : "Mur intérieur",
   } : {
     geometry: "Geometry",
     geometryHint: `${formatNumber(length, 2, locale)} m · ${formatNumber(wall.height, 2, locale)} m high`,
@@ -106,6 +110,9 @@ export function WallInspector({
     advancedHint: "Profiles · inclinations · points",
     advancedNote: "Profiles and inclinations modify the wall's vertical geometry. They are grouped here to keep the main inspector compact.",
     profile: "Profile / elevation",
+    classification: "Automatic classification",
+    virtual: "Make virtual boundary",
+    autoType: wall.type === "external" ? "External wall" : "Internal wall",
   };
 
   const detachWallType = () => {
@@ -122,7 +129,7 @@ export function WallInspector({
     const next = applyWallTypeToWall(wall, type);
     linkWallType(wall.id, type.id);
     setTypeLinkRevision((value) => value + 1);
-    onUpdateWall({ type: next.type, layers: next.layers });
+    onUpdateWall({ layers: next.layers });
   };
 
   const updatePoint = (id: string, patch: Partial<ProfilePoint>) => {
@@ -185,13 +192,15 @@ export function WallInspector({
             <span>{text.name}</span>
             <input value={wall.name} onChange={(event) => onUpdateWall({ name: event.target.value })} />
           </label>
-          <label>
-            <span>{text.wallType}</span>
-            <select value={wall.type} onChange={(event) => { detachWallType(); onUpdateWall({ type: event.target.value as WallType }); }}>
-              <option value="external">{text.external}</option>
-              <option value="internal">{text.internal}</option>
-            </select>
-          </label>
+          <div className="wall-auto-type-field">
+            <span>{labels.classification}</span>
+            <strong>{labels.autoType}</strong>
+            <small>{language === "fr" ? "Calculé d’après les espaces de chaque côté" : "Calculated from the spaces on each side"}</small>
+          </div>
+          <button type="button" className="wall-virtual-toggle" onClick={() => onSetVirtual(true)}>
+            <span aria-hidden="true">┄</span>
+            {labels.virtual}
+          </button>
           <label>
             <span>{text.length}</span>
             <div className="unit-input">

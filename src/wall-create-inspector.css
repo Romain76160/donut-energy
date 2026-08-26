@@ -1,0 +1,222 @@
+.wall-create-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wall-create-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wall-create-heading h2 {
+  margin: 0 0 3px;
+}
+
+.wall-create-heading strong {
+  color: #68798c;
+  font-size: 11px;
+}
+
+.wall-create-heading > span {
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f0f3f6;
+  color: #53657a;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.wall-create-help {
+  margin: 0;
+  color: #6f7e8f;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.wall-auto-classification-note {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #dfe8e1;
+  border-radius: 8px;
+  background: #f7faf7;
+}
+
+.wall-auto-classification-note strong {
+  color: #3f5c47;
+  font-size: 10px;
+}
+
+.wall-auto-classification-note span {
+  color: #6d7d71;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.wall-create-active {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border: 1px solid #f1c6aa;
+  border-radius: 8px;
+  background: var(--orange-soft);
+}
+
+.wall-create-active span,
+.wall-create-active small {
+  color: #8c644c;
+  font-size: 9px;
+}
+
+.wall-create-active strong {
+  color: #8f4519;
+  font-size: 12px;
+}
+
+.wall-create-library {
+  display: grid;
+  gap: 8px;
+}
+
+.wall-create-card {
+  border: 1px solid #e0e5ea;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.wall-create-card.selected {
+  border-color: #e9a87b;
+  box-shadow: 0 0 0 1px #f2ccb1;
+}
+
+.wall-create-card-main {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.wall-create-card-main > span {
+  display: grid;
+  gap: 2px;
+}
+
+.wall-create-card-main strong {
+  color: #2f435a;
+  font-size: 11px;
+}
+
+.wall-create-card-main small {
+  color: #7b8795;
+  font-size: 9px;
+}
+
+.create-wall-preview {
+  display: flex;
+  width: 100%;
+  height: 20px;
+  overflow: hidden;
+  border: 1px solid #d7dde3;
+  border-radius: 4px;
+}
+
+.create-wall-preview span {
+  min-width: 3px;
+  height: 100%;
+}
+
+.wall-create-card-actions {
+  display: flex;
+  gap: 5px;
+  padding: 0 9px 9px;
+}
+
+.wall-create-card-actions button {
+  min-height: 27px;
+  padding: 0 7px;
+  border: 1px solid #dce2e8;
+  border-radius: 5px;
+  background: #fff;
+  color: #5a6c80;
+  font-size: 9px;
+}
+
+.wall-create-card-actions .danger {
+  color: #a65353;
+}
+
+.wall-create-new,
+.wall-create-add-layer {
+  min-height: 34px;
+  border: 1px dashed #cfd8e1;
+  border-radius: 7px;
+  background: #fafbfc;
+  color: #4f6379;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wall-create-editor {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #dde4ea;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.wall-create-editor label {
+  display: grid;
+  gap: 4px;
+}
+
+.wall-create-editor label > span,
+.wall-create-editor-title {
+  color: #6e7c8c;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.wall-create-editor input,
+.wall-create-editor select {
+  min-width: 0;
+}
+
+.wall-create-layer {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) 88px 28px;
+  gap: 5px;
+  align-items: center;
+}
+
+.wall-create-editor-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.wall-create-editor-actions button {
+  min-height: 31px;
+  padding: 0 10px;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+  background: #fff;
+  color: #52657a;
+  font-size: 10px;
+}
+
+.wall-create-editor-actions .primary {
+  border-color: #e69b69;
+  background: #e9782f;
+  color: #fff;
+}

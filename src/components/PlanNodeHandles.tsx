@@ -31,7 +31,7 @@ export function PlanNodeHandles({ walls, mode, project, clientToWorld, onMoveNod
   const nodes = useMemo(() => uniqueNodes(walls), [walls]);
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  if (mode !== "node") return null;
+  if (mode !== "move") return null;
 
   const targetFromPointer = (origin: Point, clientX: number, clientY: number) => {
     const raw = clientToWorld(clientX, clientY);

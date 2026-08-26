@@ -123,3 +123,14 @@
 .virtual-wall-summary strong {
   color: #315e65;
 }
+
+.virtual-wall-restore {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #d5e1e4;
+  border-radius: 7px;
+  background: #fff;
+  color: #3f6871;
+  font-size: 10px;
+  font-weight: 750;
+}

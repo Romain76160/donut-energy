@@ -115,7 +115,7 @@ export type Project = {
   spaces: Space[];
 };
 
-export type EditorMode = "select" | "draw-external" | "draw-internal" | "draw-virtual" | "node";
+export type EditorMode = "select" | "create" | "move" | "erase";
 
 export const MATERIALS: Material[] = [
   { name: "Plaque de plâtre", conductivity: 0.25, color: "#e8e5dc" },
@@ -318,7 +318,7 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
       .map((point) => ({ id: point.id || createId(), height: Number(point.height), offset: Number(point.offset) }))
       .filter((point) => Number.isFinite(point.height) && Number.isFinite(point.offset))
     : undefined;
-  const openings = type === "virtual" || !Array.isArray(source.openings)
+  const openings = !Array.isArray(source.openings)
     ? []
     : source.openings
       .map((opening, openingIndex) => migrateOpening(opening, openingIndex, length, height))
@@ -331,11 +331,11 @@ const migrateWall = (value: unknown, fallbackIndex: number, defaultHeight: numbe
     height,
     orientation: source.orientation ?? orientationFromPoints(source.start, source.end),
     type,
-    layers: type === "virtual"
-      ? []
-      : Array.isArray(source.layers) && source.layers.length
-        ? source.layers.map((layer) => ({ ...layer, id: layer.id || createId() }))
-        : type === "external" ? externalWallLayers() : internalWallLayers(),
+    // Virtual walls keep their previous construction data so switching back to
+    // a physical wall does not destroy the user's composition.
+    layers: Array.isArray(source.layers) && source.layers.length
+      ? source.layers.map((layer) => ({ ...layer, id: layer.id || createId() }))
+      : type === "internal" ? internalWallLayers() : type === "external" ? externalWallLayers() : [],
     profile: Array.isArray(source.profile) && source.profile.length >= 2 ? source.profile.map((point) => ({ ...point, id: point.id || createId() })) : rectangleProfile(length, height),
     inclinationDeg: type === "virtual" ? undefined : inclinationDeg,
     sectionProfile: type === "virtual" ? undefined : sectionProfile,
