@@ -1,0 +1,23 @@
+.wall-move-overlay {
+  pointer-events: none;
+}
+
+.wall-move-hit {
+  pointer-events: stroke;
+  stroke: transparent;
+  stroke-width: 24px;
+  cursor: move;
+}
+
+.wall-move-preview {
+  pointer-events: none;
+  stroke: #e9782f;
+  stroke-width: 5px;
+  stroke-linecap: round;
+  stroke-dasharray: 8 5;
+  opacity: .8;
+}
+
+.wall-move-overlay .dragging .wall-move-hit {
+  cursor: grabbing;
+}
