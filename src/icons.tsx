@@ -21,6 +21,9 @@ export const PointerIcon = (props: IconProps) => (
 export const WallIcon = (props: IconProps) => (
   <svg {...base(props)}><path d="M4 18 18 4M8 18l10-10M4 14l10-10" /><path d="M4 20v-5M20 4h-5" /></svg>
 );
+export const MoveIcon = (props: IconProps) => (
+  <svg {...base(props)}><path d="M12 3v18M3 12h18" /><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" /></svg>
+);
 export const WindowIcon = (props: IconProps) => (
   <svg {...base(props)}><rect x="4" y="4" width="16" height="16" rx="1" /><path d="M12 4v16M4 12h16" /></svg>
 );
