@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { materialLabel, type Language } from "../i18n";
-import { MATERIALS, createId, type PhysicalWallType, type Wall, type WallLayer } from "../model";
+import { MATERIALS, createId, type Wall, type WallLayer } from "../model";
 import {
   createWallType,
   normalizeWallType,
-  wallPhysicalTypeLabel,
   wallTypeFromWall,
   wallTypeThicknessMm,
   type WallTypeDefinition,
@@ -29,7 +28,7 @@ const cloneForEdit = (type: WallTypeDefinition): WallTypeDefinition => ({
 function WallTypePreview({ type, language }: { type: WallTypeDefinition; language: Language }) {
   const total = Math.max(1, wallTypeThicknessMm(type));
   return (
-    <div className="wall-type-preview" aria-label={`${wallPhysicalTypeLabel(type.physicalType, language)} · ${Math.round(total)} mm`}>
+    <div className="wall-type-preview" aria-label={`${Math.round(total)} mm`}>
       {type.layers.map((layer) => (
         <span
           key={layer.id}
@@ -55,7 +54,6 @@ export function WallTypeLibrary({ wall, types, currentTypeId, language, onChange
     create: "Créer un type",
     fromWall: "Créer depuis ce mur",
     name: "Nom du type",
-    category: "Catégorie",
     composition: "Composition",
     material: "Matériau",
     thickness: "Épaisseur",
@@ -78,7 +76,6 @@ export function WallTypeLibrary({ wall, types, currentTypeId, language, onChange
     create: "Create type",
     fromWall: "Create from this wall",
     name: "Type name",
-    category: "Category",
     composition: "Composition",
     material: "Material",
     thickness: "Thickness",
@@ -96,9 +93,9 @@ export function WallTypeLibrary({ wall, types, currentTypeId, language, onChange
     total: "Total thickness",
   };
 
-  const startNew = (physicalType: PhysicalWallType = wall.type === "internal" ? "internal" : "external") => {
+  const startNew = () => {
     setEditingId(null);
-    setDraft(createWallType(customCount, physicalType));
+    setDraft(createWallType(customCount));
     setTab("editor");
   };
 
@@ -127,7 +124,7 @@ export function WallTypeLibrary({ wall, types, currentTypeId, language, onChange
       : [...types, normalized];
     onChange(next);
     setEditingId(null);
-    setDraft(createWallType(next.length, normalized.physicalType));
+    setDraft(createWallType(next.length));
     setTab("library");
   };
 
@@ -165,7 +162,7 @@ export function WallTypeLibrary({ wall, types, currentTypeId, language, onChange
               <article className={`wall-type-card${currentTypeId === type.id ? " linked" : ""}`} key={type.id}>
                 <WallTypePreview type={type} language={language} />
                 <div className="wall-type-card-head">
-                  <div><strong>{type.name}</strong><small>{wallPhysicalTypeLabel(type.physicalType, language)}</small></div>
+                  <div><strong>{type.name}</strong><small>{Math.round(wallTypeThicknessMm(type))} mm</small></div>
                   <span>{type.builtIn ? labels.builtIn : labels.custom}</span>
                 </div>
                 <div className="wall-type-metrics">
@@ -194,7 +191,6 @@ export function WallTypeLibrary({ wall, types, currentTypeId, language, onChange
 
           <div className="wall-type-fields">
             <label className="wide"><span>{labels.name}</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-            <label><span>{labels.category}</span><select value={draft.physicalType} onChange={(event) => setDraft((current) => ({ ...current, physicalType: event.target.value as PhysicalWallType }))}><option value="external">{wallPhysicalTypeLabel("external", language)}</option><option value="internal">{wallPhysicalTypeLabel("internal", language)}</option></select></label>
           </div>
 
           <div className="wall-type-layer-editor">
