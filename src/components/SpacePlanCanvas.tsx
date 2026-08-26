@@ -29,6 +29,7 @@ type Props = {
   northAngle: number;
   language: Language;
   onSelectWall: (id: string) => void;
+  onDeleteWall: (id: string) => void;
   onSelectSpace: (id: string) => void;
   onClearSelection: () => void;
   onCanvasPoint: (point: Point) => void;
@@ -43,9 +44,8 @@ type OpeningDragState = {
   position: number;
 };
 
-const isDrawing = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
+const isDrawing = (mode: EditorMode) => mode === "create";
 const normalizeNorthAngle = (value: number) => ((value % 360) + 360) % 360;
-const previewType = (mode: EditorMode) => mode === "draw-internal" ? "internal" : mode === "draw-virtual" ? "virtual" : "external";
 
 const boundaryLabel = (boundary: WallBoundaryRef, spaces: Space[], language: Language) => {
   if (boundary.kind === "outside") return language === "fr" ? "Extérieur" : "Outside";
@@ -65,6 +65,7 @@ export function SpacePlanCanvas({
   northAngle,
   language,
   onSelectWall,
+  onDeleteWall,
   onSelectSpace,
   onClearSelection,
   onCanvasPoint,
@@ -142,13 +143,14 @@ export function SpacePlanCanvas({
       : (language === "fr" ? "Adjacence incomplète : la géométrie n’est pas fermée des deux côtés." : "Incomplete adjacency: geometry is not closed on both sides.");
 
   return (
-    <main className={`canvas-panel ${isDrawing(mode) ? "drawing" : ""} ${mode === "node" ? "node-mode" : ""}`}>
+    <main className={`canvas-panel ${isDrawing(mode) ? "drawing" : ""} ${mode === "move" ? "move-mode" : ""} ${mode === "erase" ? "erase-mode" : ""}`}>
       <div className="canvas-heading">
         <div>
           <h1>{text.planTitle}</h1>
-          {isDrawing(mode) ? <p>{mode === "draw-virtual" ? (language === "fr" ? "Tracez une limite virtuelle pour séparer les pièces sans créer de paroi physique." : "Draw a virtual boundary to separate rooms without creating a physical wall.") : text.drawHint}</p> : null}
-          {mode === "node" ? <p>{text.nodeHint}</p> : null}
-          {mode === "select" ? <p>{language === "fr" ? "Cliquez dans une pièce pour modifier son nom, son usage et ses paramètres thermiques. Les ouvertures d’un mur sélectionné sont déplaçables directement." : "Click inside a room to edit its name, use and thermal settings. Openings on a selected wall can be dragged directly."}</p> : null}
+          {isDrawing(mode) ? <p>{language === "fr" ? "Tracez le mur choisi dans la bibliothèque. Intérieur / extérieur sera détecté automatiquement." : "Draw the wall selected in the library. Interior / exterior will be detected automatically."}</p> : null}
+          {mode === "move" ? <p>{language === "fr" ? "Glissez un mur ou l’un de ses points." : "Drag a wall or one of its points."}</p> : null}
+          {mode === "erase" ? <p>{language === "fr" ? "Cliquez sur un mur pour le supprimer." : "Click a wall to delete it."}</p> : null}
+          {mode === "select" ? <p>{language === "fr" ? "Cliquez sur un mur ou une pièce pour afficher ses propriétés." : "Click a wall or room to show its properties."}</p> : null}
         </div>
         <div className="north-control">
           <div
@@ -227,13 +229,13 @@ export function SpacePlanCanvas({
         role="img"
         aria-label={text.planAria}
         onPointerMove={(event) => {
-          if (isDrawing(mode) || mode === "node") setPointer(eventToWorld(event.clientX, event.clientY));
+          if (isDrawing(mode)) setPointer(eventToWorld(event.clientX, event.clientY));
         }}
         onPointerLeave={() => setPointer(null)}
         onClick={(event) => {
-          if (isDrawing(mode) || mode === "node") {
+          if (isDrawing(mode)) {
             onCanvasPoint(eventToWorld(event.clientX, event.clientY));
-          } else {
+          } else if (mode === "select") {
             onClearSelection();
           }
         }}
@@ -308,9 +310,15 @@ export function SpacePlanCanvas({
               key={wall.id}
               className={`wall-shape ${wall.type} ${selected ? "selected" : ""}`}
               onClick={(event) => {
-                if (mode !== "select") return;
-                event.stopPropagation();
-                onSelectWall(wall.id);
+                if (mode === "select") {
+                  event.stopPropagation();
+                  onSelectWall(wall.id);
+                  return;
+                }
+                if (mode === "erase") {
+                  event.stopPropagation();
+                  onDeleteWall(wall.id);
+                }
               }}
             >
               <line className="wall-hitbox" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
@@ -389,7 +397,7 @@ export function SpacePlanCanvas({
         })}
 
         {preview ? (
-          <g className={`wall-preview ${previewType(mode)}`}>
+          <g className="wall-preview external">
             <line x1={preview.start.x} y1={preview.start.y} x2={preview.end.x} y2={preview.end.y} />
             <circle cx={preview.start.x} cy={preview.start.y} r="8" />
             <circle cx={preview.end.x} cy={preview.end.y} r="8" />
@@ -404,10 +412,6 @@ export function SpacePlanCanvas({
           return <circle className="draft-point" cx={point.x} cy={point.y} r="10" />;
         })() : null}
 
-        {pointer && mode === "node" ? (() => {
-          const point = project(pointer);
-          return <g className="node-preview"><circle cx={point.x} cy={point.y} r="11" /><path d={`M ${point.x - 6} ${point.y} H ${point.x + 6} M ${point.x} ${point.y - 6} V ${point.y + 6}`} /></g>;
-        })() : null}
       </svg>
 
       <div className="scale-indicator" aria-hidden="true">
