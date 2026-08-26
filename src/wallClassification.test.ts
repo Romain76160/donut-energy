@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createId, rectangleProfile, type Project, type Space, type Wall } from "./model";
 import { autoClassifyProjectWalls, inferWallPhysicalType } from "./wallClassification";
+import { applyWallTypeToWall, type WallTypeDefinition } from "./wallTypes";
 
 const wall = (id: string, start: [number, number], end: [number, number], type: Wall["type"] = "external"): Wall => ({
   id,
@@ -45,6 +46,19 @@ describe("automatic wall classification", () => {
     const left = space("left", [[0, 0], [2, 0], [2, 4], [0, 4]]);
     const right = space("right", [[2, 0], [4, 0], [4, 4], [2, 4]]);
     expect(inferWallPhysicalType(candidate, [left, right])).toBe("internal");
+  });
+
+  it("applying a construction type never overrides geometry classification", () => {
+    const candidate = wall("partition", [2, 0], [2, 4], "internal");
+    const construction: WallTypeDefinition = {
+      id: "construction",
+      name: "Construction",
+      physicalType: "external",
+      layers: [{ id: "layer", name: "Béton", thicknessMm: 300, conductivity: 1.75, color: "#aaa" }],
+    };
+    const next = applyWallTypeToWall(candidate, construction);
+    expect(next.type).toBe("internal");
+    expect(next.layers[0].thicknessMm).toBe(300);
   });
 
   it("never reclassifies a virtual boundary", () => {
