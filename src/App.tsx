@@ -7,13 +7,15 @@ import { SpaceInspector } from "./components/SpaceInspector";
 import { StatusBar } from "./components/StatusBar";
 import { TopBar } from "./components/TopBar";
 import { VirtualWallInspector } from "./components/VirtualWallInspector";
-import { WallDefaultsInspector } from "./components/WallDefaultsInspector";
+import { WallCreateInspector } from "./components/WallCreateInspector";
 import { WallInspector } from "./components/WallInspector";
-import { nearestWallPoint, projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
+import { projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
 import { translations, type Language } from "./i18n";
 import {
+  cloneLayers,
   createId,
   createLevel,
+  externalWallLayers,
   gableProfile,
   initialProject,
   MATERIALS,
@@ -33,14 +35,15 @@ import {
   type Space,
   type Wall,
   type WallLayer,
-  type WallType,
 } from "./model";
 import { moveConnectedNode } from "./nodeEditing";
 import { syncProjectSpaces } from "./spaces";
-import { loadWallDefaults, saveWallDefaults, wallTemplateLayers, type WallDefaults } from "./wallDefaults";
+import { autoClassifyProjectWalls } from "./wallClassification";
 import {
+  linkWallType,
   loadWallTypes,
   syncProjectWallTypeInstances,
+  unlinkWallType,
   WALL_TYPES_CHANGE_EVENT,
   type WallTypeDefinition,
 } from "./wallTypes";
@@ -54,7 +57,7 @@ import {
 
 type History = { past: Project[]; present: Project; future: Project[] };
 type SurfaceKey = "floor" | "ceiling";
-type InspectorView = "context" | "defaults" | "create-level";
+type InspectorView = "context" | "create-level";
 
 const syncProjectLinkedTypes = (
   project: Project,
@@ -62,14 +65,20 @@ const syncProjectLinkedTypes = (
   windowTypes = loadWindowTypes(),
 ) => syncProjectWindowTypeInstances(syncProjectWallTypeInstances(project, wallTypes), windowTypes);
 
+const normalizeProject = (
+  project: Project,
+  wallTypes = loadWallTypes(),
+  windowTypes = loadWindowTypes(),
+) => autoClassifyProjectWalls(syncProjectSpaces(syncProjectLinkedTypes(project, wallTypes, windowTypes)));
+
 const loadProject = () => {
   try {
     const saved = localStorage.getItem("donut-energy-project");
-    if (saved) return syncProjectSpaces(syncProjectLinkedTypes(migrateProject(JSON.parse(saved))));
+    if (saved) return normalizeProject(migrateProject(JSON.parse(saved)));
   } catch {
     // A malformed or outdated local save must never prevent the editor from opening.
   }
-  return syncProjectSpaces(syncProjectLinkedTypes(initialProject()));
+  return normalizeProject(initialProject());
 };
 
 const loadLanguage = (): Language => {
@@ -89,7 +98,7 @@ const loadNorthAngle = () => {
   }
 };
 
-const drawingMode = (mode: EditorMode) => mode === "draw-external" || mode === "draw-internal" || mode === "draw-virtual";
+const drawingMode = (mode: EditorMode) => mode === "create";
 
 function App() {
   const [history, setHistory] = useState<History>(() => ({ past: [], present: loadProject(), future: [] }));
@@ -97,7 +106,8 @@ function App() {
   const [selectedWallId, setSelectedWallId] = useState<string | null>(() => history.present.levels[0]?.walls[0]?.id ?? null);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [inspectorView, setInspectorView] = useState<InspectorView>("context");
-  const [wallDefaults, setWallDefaults] = useState<WallDefaults>(loadWallDefaults);
+  const [wallTypes, setWallTypes] = useState<WallTypeDefinition[]>(loadWallTypes);
+  const [createWallTypeId, setCreateWallTypeId] = useState(() => loadWallTypes()[0]?.id ?? "");
   const [mode, setMode] = useState<EditorMode>("select");
   const [draftStart, setDraftStart] = useState<Point | null>(null);
   const [drawLength, setDrawLength] = useState(4);
@@ -124,7 +134,6 @@ function App() {
     () => activeSpaces.find((space) => space.id === selectedSpaceId) ?? null,
     [activeSpaces, selectedSpaceId],
   );
-  const allWalls = useMemo(() => project.levels.flatMap((level) => level.walls), [project.levels]);
   const rooms = activeSpaces;
   const lowerWalls = useMemo(() => {
     if (!activeLevel?.showLowerReference) return [];
@@ -176,16 +185,12 @@ function App() {
     }
   }, [northAngle]);
 
-  useEffect(() => {
-    saveWallDefaults(wallDefaults);
-  }, [wallDefaults]);
-
   const commit = (update: (current: Project) => Project) => {
     setSaved(false);
     setHistory((current) => {
       const rawNext = update(current.present);
       if (rawNext === current.present) return current;
-      const next = syncProjectSpaces(syncProjectLinkedTypes(rawNext));
+      const next = normalizeProject(rawNext, wallTypes);
       return {
         past: [...current.past.slice(-49), current.present],
         present: next,
