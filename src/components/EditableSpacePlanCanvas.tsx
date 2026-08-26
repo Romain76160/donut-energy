@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { Point } from "../model";
 import { JoineryPlacementOverlay } from "./JoineryPlacementOverlay";
 import { PlanNodeHandles } from "./PlanNodeHandles";
+import { WallMoveOverlay } from "./WallMoveOverlay";
 import { SpacePlanCanvas } from "./SpacePlanCanvas";
 
 const VIEW_WIDTH = 900;
@@ -12,9 +13,10 @@ const CENTER = { x: VIEW_WIDTH / 2, y: VIEW_HEIGHT / 2 };
 
 type Props = ComponentProps<typeof SpacePlanCanvas> & {
   onMoveNode: (from: Point, to: Point) => void;
+  onMoveWall: (wallId: string, delta: Point) => void;
 };
 
-export function EditableSpacePlanCanvas({ onMoveNode, ...props }: Props) {
+export function EditableSpacePlanCanvas({ onMoveNode, onMoveWall, ...props }: Props) {
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
   const scale = BASE_SCALE * props.zoom;
 
@@ -41,6 +43,13 @@ export function EditableSpacePlanCanvas({ onMoveNode, ...props }: Props) {
       <SpacePlanCanvas {...props} />
       {svg ? createPortal(
         <>
+          <WallMoveOverlay
+            walls={props.walls}
+            mode={props.mode}
+            project={project}
+            clientToWorld={clientToWorld}
+            onMoveWall={onMoveWall}
+          />
           <PlanNodeHandles
             walls={props.walls}
             mode={props.mode}
