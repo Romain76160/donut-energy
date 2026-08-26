@@ -27,14 +27,14 @@ type WallTypeLinks = Record<string, string>;
 const makeBuiltIns = (): WallTypeDefinition[] => [
   {
     id: "wall-external-standard",
-    name: "Mur extérieur standard",
+    name: "Mur isolé standard",
     physicalType: "external",
     layers: externalWallLayers(),
     builtIn: true,
   },
   {
     id: "wall-internal-standard",
-    name: "Cloison intérieure standard",
+    name: "Cloison légère standard",
     physicalType: "internal",
     layers: internalWallLayers(),
     builtIn: true,
@@ -157,7 +157,7 @@ export const saveWallTypes = (types: WallTypeDefinition[]) => {
 
 export const createWallType = (index = 0, physicalType: PhysicalWallType = "external"): WallTypeDefinition => normalizeWallType({
   id: createId(),
-  name: physicalType === "external" ? `Type mur extérieur ${index + 1}` : `Type cloison ${index + 1}`,
+  name: `Type de mur ${index + 1}`,
   physicalType,
   layers: fallbackLayers(physicalType),
 });
