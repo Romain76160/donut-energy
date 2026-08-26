@@ -551,17 +551,12 @@ function App() {
           mode={mode}
           levels={project.levels}
           activeLevelId={activeLevel.id}
-          walls={activeLevel.walls}
           roomCount={activeSpaces.length}
-          selectedWallId={selectedWallId}
-          defaultsOpen={inspectorView === "defaults"}
           draftStart={draftStart}
           drawLength={drawLength}
           drawAngle={drawAngle}
           language={language}
           onModeChange={handleModeChange}
-          onSelectWall={(id) => { setSelectedWallId(id); setSelectedSpaceId(null); setInspectorView("context"); setMode("select"); setDraftStart(null); }}
-          onOpenWallDefaults={openWallDefaults}
           onSelectLevel={selectLevel}
           onAddLevel={openLevelCreator}
           onDrawLengthChange={setDrawLength}
@@ -588,7 +583,9 @@ function App() {
             setSelectedSpaceId(null);
           }}
           onCanvasPoint={handleCanvasPoint}
+          onDeleteWall={deleteWall}
           onMoveNode={movePlanNode}
+          onMoveWall={movePlanWall}
           onZoomChange={setZoom}
           onNorthAngleChange={setNorthAngle}
         />
@@ -599,12 +596,13 @@ function App() {
             onCreate={createConfiguredLevel}
             onCancel={() => setInspectorView("context")}
           />
-        ) : inspectorView === "defaults" ? (
-          <WallDefaultsInspector
-            walls={allWalls}
-            defaults={wallDefaults}
+        ) : mode === "create" ? (
+          <WallCreateInspector
+            types={wallTypes}
+            selectedTypeId={createWallTypeId}
             language={language}
-            onChange={setWallDefaults}
+            onSelectType={setCreateWallTypeId}
+            onChange={setWallTypes}
           />
         ) : selectedSpace ? (
           <SpaceInspector
@@ -619,6 +617,7 @@ function App() {
             language={language}
             onUpdateWall={(patch) => updateSelectedWall((wall) => ({ ...wall, ...patch }))}
             onUpdateLength={updateWallLength}
+            onSetVirtual={(value) => setSelectedWallVirtual(value)}
           />
         ) : selectedWall ? (
           <WallInspector
@@ -628,6 +627,7 @@ function App() {
             automaticAzimuth={automaticAzimuth}
             onUpdateWall={(patch) => updateSelectedWall((wall) => ({ ...wall, ...patch }))}
             onUpdateLength={updateWallLength}
+            onSetVirtual={(value) => setSelectedWallVirtual(value)}
             onAddLayer={() => updateSelectedWall((wall) => ({ ...wall, layers: [...wall.layers, { id: createId(), thicknessMm: 100, ...MATERIALS[5] }] }))}
             onUpdateLayer={updateLayer}
             onRemoveLayer={(layerId) => updateSelectedWall((wall) => ({ ...wall, layers: wall.layers.filter((layer) => layer.id !== layerId) }))}
