@@ -121,3 +121,8 @@
 .canvas-panel.move-mode .wall-shape {
   opacity: .82;
 }
+
+.canvas-panel .wall-shape.classification-indeterminate:not(.virtual) .wall-line {
+  stroke-dasharray: 7 4;
+  opacity: .78;
+}
