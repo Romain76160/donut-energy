@@ -13,6 +13,7 @@ import {
   type WallOpening,
 } from "../model";
 import { wallArea, wallOpeningArea, wallOpaqueArea, wallResistance, wallTransmissionCoefficient, wallUValue } from "../thermal";
+import type { WallClassification } from "../wallClassification";
 import { normalizeWallSectionProfile } from "../wallInclination";
 import { wallProfileFromPreset, type WallProfilePreset } from "../wallProfilePresets";
 import {
@@ -35,6 +36,7 @@ import { WallTypeLibrary } from "./WallTypeLibrary";
 type Props = {
   wall: Wall | null;
   language: Language;
+  classification: WallClassification;
   automaticOrientation: Orientation | null;
   automaticAzimuth: number | null;
   onUpdateWall: (patch: Partial<Wall>) => void;
@@ -52,6 +54,7 @@ type Props = {
 export function WallInspector({
   wall,
   language,
+  classification,
   automaticOrientation,
   automaticAzimuth,
   onUpdateWall,
@@ -95,7 +98,7 @@ export function WallInspector({
     profile: "Profil / élévation",
     classification: "Classification automatique",
     virtual: "Passer en séparation virtuelle",
-    autoType: wall.type === "external" ? "Mur extérieur" : "Mur intérieur",
+    autoType: classification === "external" ? "Mur extérieur" : classification === "internal" ? "Mur intérieur" : "Indéterminé",
   } : {
     geometry: "Geometry",
     geometryHint: `${formatNumber(length, 2, locale)} m · ${formatNumber(wall.height, 2, locale)} m high`,
@@ -112,7 +115,7 @@ export function WallInspector({
     profile: "Profile / elevation",
     classification: "Automatic classification",
     virtual: "Make virtual boundary",
-    autoType: wall.type === "external" ? "External wall" : "Internal wall",
+    autoType: classification === "external" ? "External wall" : classification === "internal" ? "Internal wall" : "Indeterminate",
   };
 
   const detachWallType = () => {
@@ -195,7 +198,7 @@ export function WallInspector({
           <div className="wall-auto-type-field">
             <span>{labels.classification}</span>
             <strong>{labels.autoType}</strong>
-            <small>{language === "fr" ? "Calculé d’après les espaces de chaque côté" : "Calculated from the spaces on each side"}</small>
+            <small>{classification === "indeterminate" ? (language === "fr" ? "La géométrie n’est pas encore assez fermée pour conclure." : "The geometry is not closed enough to classify this wall yet.") : (language === "fr" ? "Calculé d’après les espaces de chaque côté" : "Calculated from the spaces on each side")}</small>
           </div>
           <button type="button" className="wall-virtual-toggle" onClick={() => onSetVirtual(true)}>
             <span aria-hidden="true">┄</span>
@@ -218,8 +221,8 @@ export function WallInspector({
           <label>
             <span>{text.orientation}</span>
             <div className="orientation-readonly">
-              <strong>{wall.type === "internal" ? text.internal : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong>
-              <small>{wall.type === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{automaticLabel}</small>
+              <strong>{classification === "internal" ? text.internal : classification === "indeterminate" ? "—" : automaticOrientation ? orientationLabel(automaticOrientation, language) : "—"}</strong>
+              <small>{classification === "external" && automaticAzimuth !== null ? `${formatNumber(automaticAzimuth, 0, locale)}° · ` : ""}{classification === "indeterminate" ? (language === "fr" ? "Orientation disponible après classification" : "Orientation available after classification") : automaticLabel}</small>
             </div>
           </label>
         </div>
