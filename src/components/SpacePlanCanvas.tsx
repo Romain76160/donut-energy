@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { boundarySpace, buildWallAdjacencies, wallSideAnchor, type WallBoundaryRef } from "../adjacency";
 import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "../icons";
 import { snapPoint, wallOrientationFromNorth } from "../geometry";
 import { localeFor, orientationLabel, translations, type Language } from "../i18n";
@@ -10,7 +9,6 @@ import { inferWallClassification } from "../wallClassification";
 import "../north-control.css";
 import "../virtual-walls.css";
 import "../spaces.css";
-import "../adjacency.css";
 import "../openings.css";
 
 const VIEW_WIDTH = 900;
@@ -48,12 +46,6 @@ type OpeningDragState = {
 const isDrawing = (mode: EditorMode) => mode === "create";
 const normalizeNorthAngle = (value: number) => ((value % 360) + 360) % 360;
 
-const boundaryLabel = (boundary: WallBoundaryRef, spaces: Space[], language: Language) => {
-  if (boundary.kind === "outside") return language === "fr" ? "Extérieur" : "Outside";
-  if (boundary.kind === "unassigned") return language === "fr" ? "Non attribué" : "Unassigned";
-  return boundarySpace(boundary, spaces)?.name ?? (language === "fr" ? "Pièce inconnue" : "Unknown room");
-};
-
 export function SpacePlanCanvas({
   walls,
   lowerWalls,
@@ -82,12 +74,6 @@ export function SpacePlanCanvas({
   const locale = localeFor(language);
   const northControlLabel = language === "fr" ? "Orientation du nord" : "North orientation";
   const northHint = language === "fr" ? "Glisser pour orienter le nord" : "Drag to orient north";
-  const wallAdjacencies = useMemo(() => buildWallAdjacencies(walls, spaces), [walls, spaces]);
-  const selectedAdjacency = useMemo(
-    () => wallAdjacencies.find((adjacency) => adjacency.wallId === selectedWallId) ?? null,
-    [wallAdjacencies, selectedWallId],
-  );
-
   const project = (point: Point) => ({
     x: CENTER.x + point.x * scale,
     y: CENTER.y + point.y * scale,
@@ -136,12 +122,6 @@ export function SpacePlanCanvas({
       angle: Math.atan2(pointer.y - draftStart.y, pointer.x - draftStart.x) * 180 / Math.PI,
     };
   }, [draftStart, pointer, scale, mode]);
-
-  const adjacencyNote = selectedAdjacency?.quality === "resolved"
-    ? (language === "fr" ? "Adjacences reconnues automatiquement." : "Adjacencies detected automatically.")
-    : selectedAdjacency?.quality === "conflict"
-      ? (language === "fr" ? "Conflit de classification : vérifie le type du mur et la géométrie des pièces." : "Classification conflict: check the wall type and room geometry.")
-      : (language === "fr" ? "Adjacence incomplète : la géométrie n’est pas fermée des deux côtés." : "Incomplete adjacency: geometry is not closed on both sides.");
 
   return (
     <main className={`canvas-panel ${isDrawing(mode) ? "drawing" : ""} ${mode === "move" ? "move-mode" : ""} ${mode === "erase" ? "erase-mode" : ""}`}>
@@ -209,20 +189,6 @@ export function SpacePlanCanvas({
         </div>
       </div>
 
-      {selectedAdjacency ? (
-        <div className={`wall-adjacency-strip ${selectedAdjacency.quality}`}>
-          <div className="wall-adjacency-header">
-            <strong>{language === "fr" ? "Adjacences du mur" : "Wall adjacencies"}</strong>
-            <small>{language === "fr" ? "Calcul automatique" : "Automatic calculation"}</small>
-          </div>
-          <div className="wall-adjacency-sides">
-            <span><i>A</i>{boundaryLabel(selectedAdjacency.sideA, spaces, language)}</span>
-            <span><i>B</i>{boundaryLabel(selectedAdjacency.sideB, spaces, language)}</span>
-          </div>
-          <div className="wall-adjacency-note">{adjacencyNote}</div>
-        </div>
-      ) : null}
-
       <svg
         ref={svgRef}
         className="plan-canvas"
@@ -289,8 +255,6 @@ export function SpacePlanCanvas({
           const automaticOrientation = classification === "external"
             ? wallOrientationFromNorth(wall, walls, northAngle, spaces)
             : null;
-          const sideA = selected ? project(wallSideAnchor(wall, "A")) : null;
-          const sideB = selected ? project(wallSideAnchor(wall, "B")) : null;
           const length = wallLength(wall);
           const tangent = length > 0
             ? { x: (wall.end.x - wall.start.x) / length, y: (wall.end.y - wall.start.y) / length }
@@ -388,18 +352,6 @@ export function SpacePlanCanvas({
                       ? ` · ${orientationLabel(automaticOrientation, language)}`
                       : ""}
               </text>
-              {selected && sideA && sideB ? (
-                <>
-                  <g className="adjacency-side-marker">
-                    <circle cx={sideA.x} cy={sideA.y} r="11" />
-                    <text x={sideA.x} y={sideA.y + 4} textAnchor="middle">A</text>
-                  </g>
-                  <g className="adjacency-side-marker">
-                    <circle cx={sideB.x} cy={sideB.y} r="11" />
-                    <text x={sideB.x} y={sideB.y + 4} textAnchor="middle">B</text>
-                  </g>
-                </>
-              ) : null}
             </g>
           );
         })}
