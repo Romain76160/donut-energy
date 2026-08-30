@@ -9,7 +9,8 @@ import { TopBar } from "./components/TopBar";
 import { VirtualWallInspector } from "./components/VirtualWallInspector";
 import { WallCreateInspector } from "./components/WallCreateInspector";
 import { WallInspector } from "./components/WallInspector";
-import { projectFromLengthAngle, snapPoint, splitWallsAtPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
+import { WallToolInspector } from "./components/WallToolInspector";
+import { projectFromLengthAngle, snapPoint, wallAzimuthFromNorth, wallOrientationFromNorth } from "./geometry";
 import { translations, type Language } from "./i18n";
 import {
   cloneLayers,
@@ -38,15 +39,17 @@ import {
 } from "./model";
 import { moveConnectedNode } from "./nodeEditing";
 import { syncProjectSpaces } from "./spaces";
-import { autoClassifyProjectWalls } from "./wallClassification";
+import { autoClassifyProjectWalls, inferWallClassification } from "./wallClassification";
 import {
   linkWallType,
   loadWallTypes,
+  readWallTypeLink,
   syncProjectWallTypeInstances,
   unlinkWallType,
   WALL_TYPES_CHANGE_EVENT,
   type WallTypeDefinition,
 } from "./wallTypes";
+import { insertWallWithIntersections } from "./wallIntersections";
 import {
   loadWindowTypes,
   syncProjectWindowTypeInstances,
@@ -135,6 +138,12 @@ function App() {
     [activeSpaces, selectedSpaceId],
   );
   const rooms = activeSpaces;
+  const selectedWallClassification = useMemo(
+    () => selectedWall && selectedWall.type !== "virtual"
+      ? inferWallClassification(selectedWall, activeSpaces)
+      : null,
+    [selectedWall, activeSpaces],
+  );
   const lowerWalls = useMemo(() => {
     if (!activeLevel?.showLowerReference) return [];
     const lower = project.levels
@@ -143,13 +152,13 @@ function App() {
     return lower?.walls ?? [];
   }, [activeLevel, project.levels]);
   const automaticOrientation = useMemo(() => {
-    if (!selectedWall || selectedWall.type !== "external" || !activeLevel) return null;
+    if (!selectedWall || selectedWallClassification !== "external" || !activeLevel) return null;
     return wallOrientationFromNorth(selectedWall, activeLevel.walls, northAngle, rooms);
-  }, [selectedWall, activeLevel, northAngle, rooms]);
+  }, [selectedWall, selectedWallClassification, activeLevel, northAngle, rooms]);
   const automaticAzimuth = useMemo(() => {
-    if (!selectedWall || selectedWall.type !== "external" || !activeLevel) return null;
+    if (!selectedWall || selectedWallClassification !== "external" || !activeLevel) return null;
     return wallAzimuthFromNorth(selectedWall, activeLevel.walls, northAngle, rooms);
-  }, [selectedWall, activeLevel, northAngle, rooms]);
+  }, [selectedWall, selectedWallClassification, activeLevel, northAngle, rooms]);
 
   useEffect(() => {
     if (!activeLevel) {
@@ -368,12 +377,18 @@ function App() {
       openings: [],
     };
 
-    if (selectedConstruction) linkWallType(id, selectedConstruction.id);
-
     commitActiveLevel((level) => {
-      let walls = splitWallsAtPoint(level.walls, start);
-      walls = splitWallsAtPoint(walls, end);
-      return { ...level, walls: [...walls, newWall] };
+      const sourceLinks = new Map(level.walls.map((wall) => [wall.id, readWallTypeLink(wall.id)]));
+      const inserted = insertWallWithIntersections(level.walls, newWall);
+
+      for (const [sourceId, childIds] of inserted.splitMap) {
+        const typeId = sourceId === id ? selectedConstruction?.id ?? null : sourceLinks.get(sourceId) ?? null;
+        if (!typeId) continue;
+        if (sourceId !== id && !childIds.includes(sourceId)) unlinkWallType(sourceId);
+        childIds.forEach((childId) => linkWallType(childId, typeId));
+      }
+
+      return { ...level, walls: inserted.walls };
     });
     setSelectedWallId(null);
     setSelectedSpaceId(null);
@@ -459,6 +474,38 @@ function App() {
     if (!next) return current;
     return { past: [...current.past, current.present], present: next, future: current.future.slice(1) };
   });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editing = target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || target?.isContentEditable;
+      if (editing) return;
+
+      const modifier = event.ctrlKey || event.metaKey;
+      if (modifier && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (modifier && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+        return;
+      }
+      if (event.key === "Escape" && mode !== "select") {
+        event.preventDefault();
+        setDraftStart(null);
+        setMode("select");
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mode]);
 
   const save = () => {
     try {
@@ -604,6 +651,8 @@ function App() {
             onSelectType={setCreateWallTypeId}
             onChange={setWallTypes}
           />
+        ) : mode === "move" || mode === "erase" ? (
+          <WallToolInspector mode={mode} wallCount={activeLevel.walls.length} language={language} />
         ) : selectedSpace ? (
           <SpaceInspector
             space={selectedSpace}
@@ -623,6 +672,7 @@ function App() {
           <WallInspector
             wall={selectedWall}
             language={language}
+            classification={selectedWallClassification ?? "indeterminate"}
             automaticOrientation={automaticOrientation}
             automaticAzimuth={automaticAzimuth}
             onUpdateWall={(patch) => updateSelectedWall((wall) => ({ ...wall, ...patch }))}

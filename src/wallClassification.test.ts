@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createId, rectangleProfile, type Project, type Space, type Wall } from "./model";
-import { autoClassifyProjectWalls, inferWallPhysicalType } from "./wallClassification";
+import { autoClassifyProjectWalls, inferWallClassification, inferWallPhysicalType } from "./wallClassification";
 import { applyWallTypeToWall, type WallTypeDefinition } from "./wallTypes";
 
 const wall = (id: string, start: [number, number], end: [number, number], type: Wall["type"] = "external"): Wall => ({
@@ -35,6 +35,11 @@ const space = (id: string, polygon: Array<[number, number]>): Space => {
 };
 
 describe("automatic wall classification", () => {
+  it("reports indeterminate while no closed space is available", () => {
+    const candidate = wall("draft", [0, 0], [4, 0], "external");
+    expect(inferWallClassification(candidate, [])).toBe("indeterminate");
+  });
+
   it("classifies an envelope wall as external", () => {
     const candidate = wall("outer", [0, 0], [4, 0], "internal");
     const room = space("room", [[0, 0], [4, 0], [4, 4], [0, 4]]);

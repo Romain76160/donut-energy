@@ -1,0 +1,58 @@
+.wall-tool-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wall-tool-inspector-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.wall-tool-inspector-heading svg {
+  width: 22px;
+  height: 22px;
+  color: #60758a;
+}
+
+.wall-tool-inspector-heading h2 {
+  margin: 0 0 2px;
+}
+
+.wall-tool-inspector-heading span,
+.wall-tool-count {
+  color: #7b8896;
+  font-size: 10px;
+}
+
+.wall-tool-inspector-card {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #dde4ea;
+  border-radius: 9px;
+  background: #f8fafb;
+}
+
+.wall-tool-inspector-card strong {
+  color: #40556c;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.wall-tool-inspector-card p {
+  margin: 0;
+  color: #718091;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.wall-tool-inspector.erase .wall-tool-inspector-heading svg {
+  color: #ad5a5a;
+}
+
+.wall-tool-inspector.erase .wall-tool-inspector-card {
+  border-color: #ecd6d6;
+  background: #fff7f7;
+}
