@@ -21,3 +21,15 @@
 .wall-move-overlay .dragging .wall-move-hit {
   cursor: grabbing;
 }
+
+.wall-move-midpoint {
+  pointer-events: none;
+  fill: #fff;
+  stroke: #e9782f;
+  stroke-width: 2px;
+  opacity: .9;
+}
+
+.wall-move-overlay .dragging .wall-move-midpoint {
+  fill: #e9782f;
+}
