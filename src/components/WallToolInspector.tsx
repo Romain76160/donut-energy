@@ -16,18 +16,18 @@ export function WallToolInspector({ mode, wallCount, language }: Props) {
       subtitle: move ? "Modification géométrique" : "Suppression directe",
       main: move ? "Glissez le milieu d’un mur pour déplacer le mur entier." : "Survolez un mur puis cliquez pour le supprimer.",
       secondary: move ? "Glissez une extrémité pour déplacer le nœud et conserver les murs raccordés." : "Ctrl+Z ou ⌘Z restaure immédiatement la dernière suppression.",
-      count: `\${wallCount} mur\${wallCount > 1 ? "s" : ""} sur ce niveau`,
+      count: wallCount + " mur" + (wallCount > 1 ? "s" : "") + " sur ce niveau",
     }
     : {
       title: move ? "MOVE" : "ERASE",
       subtitle: move ? "Geometry editing" : "Direct deletion",
       main: move ? "Drag the middle of a wall to move the whole wall." : "Hover a wall then click to delete it.",
       secondary: move ? "Drag an endpoint to move the node while keeping connected walls joined." : "Ctrl+Z or ⌘Z immediately restores the last deletion.",
-      count: `\${wallCount} wall\${wallCount === 1 ? "" : "s"} on this level`,
+      count: wallCount + " wall" + (wallCount === 1 ? "" : "s") + " on this level",
     };
 
   return (
-    <aside className={`inspector wall-tool-inspector \${mode}`}>
+    <aside className={"inspector wall-tool-inspector " + mode}>
       <div className="wall-tool-inspector-heading">
         {move ? <MoveIcon /> : <TrashIcon />}
         <div>
