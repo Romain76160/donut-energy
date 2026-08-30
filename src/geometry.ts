@@ -119,7 +119,7 @@ export const projectFromLengthAngle = (start: Point, length: number, angleDeg: n
   };
 };
 
-const splitSingleWall = (wall: Wall, point: Point): Wall[] => {
+export const splitSingleWall = (wall: Wall, point: Point): Wall[] => {
   const hit = distancePointToSegment(point, wall.start, wall.end);
   const length = wallLength(wall);
   if (hit.distance > 0.02 || length < 0.2 || hit.t <= 0.01 || hit.t >= 0.99) return [wall];
