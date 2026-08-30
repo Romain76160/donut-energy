@@ -48,15 +48,30 @@ export function WallMoveOverlay({ walls, mode, project, clientToWorld, onMoveWal
         const delta = active ? drag.delta : { x: 0, y: 0 };
         const a = project({ x: wall.start.x + delta.x, y: wall.start.y + delta.y });
         const b = project({ x: wall.end.x + delta.x, y: wall.end.y + delta.y });
+        const startScreen = project(wall.start);
+        const endScreen = project(wall.end);
+        const hitA = {
+          x: startScreen.x + (endScreen.x - startScreen.x) * 0.24,
+          y: startScreen.y + (endScreen.y - startScreen.y) * 0.24,
+        };
+        const hitB = {
+          x: startScreen.x + (endScreen.x - startScreen.x) * 0.76,
+          y: startScreen.y + (endScreen.y - startScreen.y) * 0.76,
+        };
+        const midpoint = {
+          x: (startScreen.x + endScreen.x) / 2,
+          y: (startScreen.y + endScreen.y) / 2,
+        };
         return (
           <g key={wall.id} className={active ? "dragging" : ""}>
             {active ? <line className="wall-move-preview" x1={a.x} y1={a.y} x2={b.x} y2={b.y} /> : null}
+            <circle className="wall-move-midpoint" cx={midpoint.x} cy={midpoint.y} r="5" />
             <line
               className="wall-move-hit"
-              x1={project(wall.start).x}
-              y1={project(wall.start).y}
-              x2={project(wall.end).x}
-              y2={project(wall.end).y}
+              x1={hitA.x}
+              y1={hitA.y}
+              x2={hitB.x}
+              y2={hitB.y}
               onPointerDown={(event) => start(event, wall)}
               onPointerMove={(event) => {
                 if (!drag || drag.wallId !== wall.id || drag.pointerId !== event.pointerId) return;
