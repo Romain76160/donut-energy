@@ -353,13 +353,6 @@ export function SpacePlanCanvas({
                       : ""}
               </text>
             </g>
-                  <g className="adjacency-side-marker">
-                    <circle cx={sideB.x} cy={sideB.y} r="11" />
-                    <text x={sideB.x} y={sideB.y + 4} textAnchor="middle">B</text>
-                  </g>
-                </>
-              ) : null}
-            </g>
           );
         })}
 
