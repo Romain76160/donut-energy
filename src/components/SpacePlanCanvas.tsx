@@ -6,6 +6,7 @@ import { localeFor, orientationLabel, translations, type Language } from "../i18
 import { emitOpeningPlanMove } from "../openingEditing";
 import { formatNumber, wallLength, type EditorMode, type Point, type Space, type Wall } from "../model";
 import { openingCenterPoint, openingTypeLabel, wallOpenings } from "../openings";
+import { inferWallClassification } from "../wallClassification";
 import "../north-control.css";
 import "../virtual-walls.css";
 import "../spaces.css";
@@ -284,7 +285,8 @@ export function SpacePlanCanvas({
           const midX = (start.x + end.x) / 2;
           const midY = (start.y + end.y) / 2;
           const horizontal = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y);
-          const automaticOrientation = wall.type === "external"
+          const classification = wall.type === "virtual" ? "indeterminate" : inferWallClassification(wall, spaces);
+          const automaticOrientation = classification === "external"
             ? wallOrientationFromNorth(wall, walls, northAngle, spaces)
             : null;
           const sideA = selected ? project(wallSideAnchor(wall, "A")) : null;
@@ -308,7 +310,7 @@ export function SpacePlanCanvas({
           return (
             <g
               key={wall.id}
-              className={`wall-shape ${wall.type} ${selected ? "selected" : ""}`}
+              className={`wall-shape ${wall.type} classification-${classification} ${selected ? "selected" : ""}`}
               onClick={(event) => {
                 if (mode === "select") {
                   event.stopPropagation();
@@ -378,7 +380,13 @@ export function SpacePlanCanvas({
               <circle className="wall-node" cx={start.x} cy={start.y} r="7" />
               <circle className="wall-node" cx={end.x} cy={end.y} r="7" />
               <text x={midX + (horizontal ? 0 : 25)} y={midY + (horizontal ? -20 : 4)} textAnchor="middle">
-                {formatNumber(wallLength(wall), 2, locale)} m{automaticOrientation ? ` · ${orientationLabel(automaticOrientation, language)}` : wall.type === "virtual" ? ` · ${language === "fr" ? "virtuel" : "virtual"}` : ""}
+                {formatNumber(wallLength(wall), 2, locale)} m{wall.type === "virtual"
+                  ? ` · ${language === "fr" ? "virtuel" : "virtual"}`
+                  : classification === "indeterminate"
+                    ? ` · ${language === "fr" ? "indéterminé" : "indeterminate"}`
+                    : automaticOrientation
+                      ? ` · ${orientationLabel(automaticOrientation, language)}`
+                      : ""}
               </text>
               {selected && sideA && sideB ? (
                 <>
